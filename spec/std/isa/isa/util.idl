@@ -242,3 +242,30 @@ function contains? {
       (target_start + target_size) <= (region_start + region_size);
   }
 }
+
+function min {
+  returns Bits<64>
+  arguments Bits<64> a, Bits<64> b
+  description {
+    Returns the smaller of a or b
+  }
+  body {
+    return a < b ? a : b;
+  }
+}
+
+function sqrt {
+  returns Bits<64>
+  arguments Bits<64> int_value
+  description {
+    Integer square root of power of 4
+  }
+  body {
+    for (U32 i=0; i<64; i++) {
+      int_value = int_value / 4;
+      if (int_value <= 1) {
+        return i + 1;
+      }
+    }
+  }
+}

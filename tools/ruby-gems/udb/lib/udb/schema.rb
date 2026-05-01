@@ -104,6 +104,10 @@ module Udb
           "32-bit integer"
         elsif schema_hash["$ref"].split("/").last == "uint64"
           "64-bit integer"
+        elsif schema_hash["$ref"].split("/").last == "power_of_4"
+          "power of four"
+        elsif schema_hash["$ref"].split("/").last == "64bit_unsigned_pow2"
+          "positive 64-bit power of two"
         else
           raise "unhandled type ref: #{schema_hash["$ref"]}"
         end

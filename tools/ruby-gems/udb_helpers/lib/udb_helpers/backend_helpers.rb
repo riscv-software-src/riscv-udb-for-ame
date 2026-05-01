@@ -144,8 +144,8 @@ module Udb
 
       # @return [String] A hyperlink to UDB instruction documentation
       # @param inst_name [String] Name of the instruction
-      def link_to_udb_doc_inst(inst_name)
-        "%%UDB_DOC_LINK%inst;#{inst_name.sanitize};#{inst_name}%%"
+      def link_to_udb_doc_inst(inst_name, link_text = inst_name)
+        "%%UDB_DOC_LINK%inst;#{inst_name.sanitize};#{link_text}%%"
       end
 
       # @return [String] A hyperlink to UDB CSR documentation

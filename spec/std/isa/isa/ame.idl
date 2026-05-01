@@ -1,0 +1,253 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+%version: 1.0
+
+Bits<4>  AME_DTYPE_WIDTH = 8;      # width of a datatype ID
+Bits<8>  AME_MAX_DTYPE_SIZE = 64;  # largest width of a datatype value
+
+Bits<64> AME_MAX_SQUARE_SIZE = AME_MAX_DTYPE_SIZE * AME_NELEM;
+
+Bits<8>  AME_NUM_MREGS = 16;
+Bits<64> AME_MATRIX_REGISTER_SIZE = AME_UNIT_DATATYPE_SIZE * AME_NELEM;
+
+enum AmeOperation {
+  ADD1D      1
+  SUB1D      2
+  MEAN1D     3
+  HDIFF1D    4
+  ABSDIFF1D  5
+  ABS1D      6
+  MAX1D      7
+  MIN1D      8
+}
+
+enum AmeDatatype {
+  INT4         1
+  INT4PACK2    2
+  INT8         3
+  INT8PACK2    4
+  INT16        5
+  INT32        6
+  INT64        7
+
+  UINT4        8
+  UINT4PACK2   9
+  UINT8        10
+  UINT8PACK2   11
+  UINT16       12
+  UINT32       13
+  UINT64       14
+
+  IEEE754_FP16 15
+  IEEE754_FP32 16
+  IEEE754_FP32 17
+
+  FP8_E3M4     18
+  FP8_E4M3     19
+  FP8_E5M2     20
+}
+
+builtin function ame_xform_square_from_rm {
+  returns Bits<AME_MAX_SQUARE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> raster_square,
+    Bits<8> dtype
+  description {
+    Given a square in row-major format, return the implementation-dependent
+    representation of the square.
+  }
+}
+
+builtin function ame_xform_rm_to_square {
+  returns Bits<AME_MAX_SQUARE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> impl_square,
+    Bits<8> dtype
+  description {
+    Given a square in implementation-defined format, return the row-major
+    representation of the square.
+  }
+}
+
+function ame_dtype_val_to_size {
+  returns Bits<AME_MAX_DTYPE_SIZE>
+  arguments Bits<AME_DTYPE_WIDTH> dtype_val
+  description {
+    Given an integral datatype value, return the size of the datatype in bits
+  }
+  body {
+    if (dtype_val == AmeDatatype::INT4) {
+      return 4;
+    } else if (dtype_val == AmeDatatype::INT4PACK2) {
+      return 8;
+    } else if (dtype_val == AmeDatatype::INT8) {
+      return 8;
+    } else if (dtype_val == AmeDatatype::INT8PACK2) {
+      return 16;
+    } else if (dtype_val == AmeDatatype::INT16) {
+      return 16;
+    } else if (dtype_val == AmeDatatype::INT32) {
+      return 32;
+    } else if (dtype_val == AmeDatatype::INT64) {
+      return 64;
+    } else if (dtype_val == AmeDatatype::UINT4) {
+      return 4;
+    } else if (dtype_val == AmeDatatype::UINT4PACK2) {
+      return 8;
+    } else if (dtype_val == AmeDatatype::UINT8) {
+      return 8;
+    } else if (dtype_val == AmeDatatype::UINT8PACK2) {
+      return 16;
+    } else if (dtype_val == AmeDatatype::UINT16) {
+      return 16;
+    } else if (dtype_val == AmeDatatype::UINT32) {
+      return 32;
+    } else {
+      unreachable("Unknown dtype value");
+    }
+  }
+}
+
+function ame_op_supported {
+  returns Boolean
+  arguments AmeOperation op, Bits<8> dest_dtype, Bits<8> src1_dtype, Bits<8> src2_dtype
+  description {
+    Returns true if src1 op src2 = dest is a supported operation for the given datatypes
+  }
+  body {
+    # TODO
+    return true;
+  }
+}
+
+function ame_op {
+  returns Bits<AME_MAX_DTYPE_SIZE>
+  arguments
+    AmeOperation op,
+    Bits<8> src1_dtype, Bits<AME_MAX_DTYPE_SIZE> src1_value,
+    Bits<8> src2_dtype, Bits<AME_MAX_DTYPE_SIZE> src2_value,
+    Bits<8> dest_dtype
+  description {
+    Returns the result of src1 op src2 in dest_type.
+
+    The bits above the destination datatype size are undefined, and should not be used.
+  }
+  body {
+    Bits<AME_MAX_DTYPE_SIZE> result;
+
+    if (op == AmeOperation::ADD1D) {
+      if (
+        (
+          (src1_dtype == INT4)   ||
+          (src1_dtype == INT8)   ||
+          (src1_dtype == INT16)  ||
+          (src1_dtype == INT32)  ||
+          (src1_dtype == INT64)  ||
+          (src1_dtype == UINT4)  ||
+          (src1_dtype == UINT8)  ||
+          (src1_dtype == UINT16) ||
+          (src1_dtype == UINT32) ||
+          (src1_dtype == UINT64)
+        ) &&
+        (
+          (src2_dtype == INT4)  ||
+          (src2_dtype == INT8)  ||
+          (src2_dtype == INT16) ||
+          (src2_dtype == INT32) ||
+          (src2_dtype == INT64) ||
+          (src2_dtype == UINT4)  ||
+          (src2_dtype == UINT8)  ||
+          (src2_dtype == UINT16) ||
+          (src2_dtype == UINT32) ||
+          (src2_dtype == UINT64)
+        )
+      ) {
+        result = src1_value + src2_value;
+      } else {
+        # not implemented
+        result = 64'hxxxxxxxxxxxxxxxx;
+      }
+    } else if (op == AmeOperation::SUB1D) {
+      # D = B - A  (src2 - src1)
+      result = src2_value - src1_value;
+    } else if (op == AmeOperation::MEAN1D) {
+      # D = (A + B) / 2
+      result = (src1_value + src2_value) >> 1;
+    } else if (op == AmeOperation::HDIFF1D) {
+      # D = (B - A) / 2
+      result = (src2_value - src1_value) >> 1;
+    } else if (op == AmeOperation::ABSDIFF1D) {
+      # D = abs(A - B)
+      Bits<AME_MAX_DTYPE_SIZE> diff = src1_value - src2_value;
+      result = (src1_value >= src2_value) ? diff : (0 - diff);
+    } else if (op == AmeOperation::ABS1D) {
+      # D = abs(A)  (src2 unused)
+      result = (src1_value[AME_MAX_DTYPE_SIZE - 1] == 0) ? src1_value : (0 - src1_value);
+    } else if (op == AmeOperation::MAX1D) {
+      # D = max(A, B)
+      result = (src1_value >= src2_value) ? src1_value : src2_value;
+    } else if (op == AmeOperation::MIN1D) {
+      # D = min(A, B)
+      result = (src1_value <= src2_value) ? src1_value : src2_value;
+    }
+    return result;
+  }
+}
+
+function ame_dtype_size {
+  returns Bits<AME_MAX_DTYPE_SIZE>
+  arguments Bits<4> m_idx
+  description {
+    Returns the size, in bits, of the operation datatype in `M` register m_idx
+  }
+  body {
+    return ame_dtype_val_to_size(Md[m_idx][7:0]);
+  }
+}
+
+function ame_datatype_supported {
+  returns Boolean
+  arguments Bits<8> dtype
+  description {
+    Returns true if dtype is a supported datatype, false otherwise.
+
+    Returns false if dtype is 0 (no datatype).
+    Returns false if dtype is not a known datatype ID.
+  }
+  body {
+    if (dtype == 0) {
+      return false;
+    } else if (dtype == AmeDatatype::INT4) {
+      return $array_includes?(AME_SUPPORTED_DATATYPES, $bits(AmeDatatype::INT4));
+    } else if (dtype == AmeDatatype::INT4) {
+      return $array_includes?(AME_SUPPORTED_DATATYPES, $bits(AmeDatatype::INT4PACK2));
+    }
+  }
+}
+
+function read_memory_ame {
+  returns Bits<MXLEN>
+  arguments
+    XReg virtual_address,
+    Bits<INSTR_ENC_SIZE> encoding,
+    Bits<AME_MAX_DTYPE_SIZE> dtype_size_bytes
+  description {
+    Read dtype_size_btyes from memory
+  }
+  body {
+    if (dtype_size_bytes == 4) {
+      return read_memory(4, virtual_address, encoding);
+    } else if (dtype_size_bytes == 8) {
+      return read_memory(8, virtual_address, encoding);
+    } else if (dtype_size_bytes == 16) {
+      return read_memory(16, virtual_address, encoding);
+    } else if (dtype_size_bytes == 32) {
+      return read_memory(32, virtual_address, encoding);
+    } else if (dtype_size_bytes == 64) {
+      return read_memory(64, virtual_address, encoding);
+    } else {
+      unreachable("Unsupported dtype size");
+    }
+  }
+}

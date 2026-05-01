@@ -101,7 +101,7 @@
         },
         "register_class": {
           "type": "string",
-          "enum": ["general_purpose", "floating_point", "vector"]
+          "enum": ["general_purpose", "floating_point", "vector", "matrix"]
         },
         "register_length": {
           "$ref": "schema_defs.json#/$defs/bit_length_value"

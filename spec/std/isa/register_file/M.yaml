@@ -1,0 +1,96 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/register_file_schema.json
+
+$schema: register_file_schema.json#
+kind: register_file
+name: M
+long_name: Attached Matrix General-purpose Registers
+description: |
+  `M` registers are used as the data operand of load or store instructions,
+  the input operands of 1D (element-wise/vector) operations, and the output operands of 1D operations.
+definedBy: Zvame
+register_class: matrix
+register_length(): return AME_NELEM * AME_UNIT_DATATYPE_SIZE;
+registers:
+  - name: m0
+    abi_mnemonics: [m0]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m1
+    abi_mnemonics: [m1]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m2
+    abi_mnemonics: [m2]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m3
+    abi_mnemonics: [m3]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m4
+    abi_mnemonics: [m4]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m5
+    abi_mnemonics: [m5]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m6
+    abi_mnemonics: [m6]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m7
+    abi_mnemonics: [m7]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m8
+    abi_mnemonics: [m8]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m9
+    abi_mnemonics: [m9]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m10
+    abi_mnemonics: [m10]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m11
+    abi_mnemonics: [m11]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m12
+    abi_mnemonics: [m12]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m13
+    abi_mnemonics: [m13]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m14
+    abi_mnemonics: [m14]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m15
+    abi_mnemonics: [m15]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.

@@ -1,0 +1,40 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/register_file_schema.json
+
+$schema: register_file_schema.json#
+kind: register_file
+name: A
+long_name: Attached Matrix Accumulator Registers
+description: |
+  `A` registers are registers for matrix multiply accumulate operations.
+definedBy: Zvame
+register_class: matrix
+register_length(): return AME_NELEM * AME_MAX_DTYPE_SIZE;
+registers:
+  - name: a0
+    abi_mnemonics: [a0]
+    caller_saved: true
+    roles: [temporary]
+    description: Matrix multiply accumulation register
+  - name: a1
+    abi_mnemonics: [a1]
+    caller_saved: true
+    roles: [temporary]
+    description: Matrix multiply accumulation register
+  - name: a2
+    abi_mnemonics: [a2]
+    caller_saved: true
+    roles: [temporary]
+    description: Matrix multiply accumulation register
+  - name: a3
+    abi_mnemonics: [a3]
+    caller_saved: true
+    roles: [temporary]
+    description: Matrix multiply accumulation register
+  - name: a4
+    abi_mnemonics: [a4]
+    caller_saved: true
+    roles: [temporary]
+    description: Matrix multiply accumulation register

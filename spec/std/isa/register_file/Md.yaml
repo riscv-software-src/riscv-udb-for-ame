@@ -1,0 +1,100 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/register_file_schema.json
+
+$schema: register_file_schema.json#
+kind: register_file
+name: Md
+long_name: Attached Matrix General-purpose Datatype Registers
+description: |
+  `Md` registers hold the datatype of the same-indexed `M` register.
+
+  An `Md` register holds two 8-bit datatype specifiers:
+
+    1. In bits 7:0, the datatype of elements held in the the same-indexed `M` register.
+    1. In bits 15:8, the datatype of memory backing the elements -- that is, the datatype used by loads and stores.
+definedBy: Zvame
+register_class: matrix
+register_length(): return 16;
+registers:
+  - name: md0
+    abi_mnemonics: [md0]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md1
+    abi_mnemonics: [md1]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md2
+    abi_mnemonics: [md2]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md3
+    abi_mnemonics: [md3]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md4
+    abi_mnemonics: [md4]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md5
+    abi_mnemonics: [md5]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md6
+    abi_mnemonics: [md6]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md7
+    abi_mnemonics: [md7]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md8
+    abi_mnemonics: [md8]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md9
+    abi_mnemonics: [md9]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md10
+    abi_mnemonics: [md10]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md11
+    abi_mnemonics: [md11]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md12
+    abi_mnemonics: [md12]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md13
+    abi_mnemonics: [md13]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md14
+    abi_mnemonics: [md14]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md15
+    abi_mnemonics: [md15]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register

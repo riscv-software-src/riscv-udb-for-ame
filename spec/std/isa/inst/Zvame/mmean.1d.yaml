@@ -1,0 +1,104 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mmean.1d
+long_name: Elementwise arithmetic mean (half-add)
+description: |
+  Elementwise arithmetic mean of the tensors in `ms1` and `ms2`, stored into `md`.
+  Reduces overflow risk compared to a full add followed by a right shift.
+
+  *numpy equivalent*: `md = (ms1 + ms2) * 0.5`
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, ms1, ms2
+encoding:
+  match: 00000100---------0000----0110011
+  variables:
+    - name: md
+      location: 10-7
+    - name: ms1
+      location: 18-15
+    - name: ms2
+      location: 23-20
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<8> dest_dtype = Md[md][7:0];
+  Bits<8> src1_dtype = Md[ms1][7:0];
+  Bits<8> src2_dtype = Md[ms2][7:0];
+
+  ####################################################################################
+  ## Calculate element/register sizes for each register index
+  ####################################################################################
+
+  U32 src1_element_size = ame_dtype_val_to_size(src1_dtype);
+  U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (src1_nregs == 0) {
+    src1_nregs = 1;
+  }
+  U32 src1_elements_per_reg = AME_NELEM / src1_nregs;
+
+  U32 src2_element_size = ame_dtype_val_to_size(src2_dtype);
+  U32 src2_nregs = src2_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (src2_nregs == 0) {
+    src2_nregs = 1;
+  }
+  U32 src2_elements_per_reg = AME_NELEM / src2_nregs;
+
+  U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
+  U32 dest_nregs = dest_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (dest_nregs == 0) {
+    dest_nregs = 1;
+  }
+  U32 dest_elements_per_reg = AME_NELEM / dest_nregs;
+
+  ####################################################################################
+  ## Check for exceptions
+  ####################################################################################
+
+  if (!ame_op_supported(AmeOperation::MEAN1D, dest_dtype, src1_dtype, src2_dtype)) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  if ((ms1 % src1_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((ms2 % src2_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((md % dest_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  ####################################################################################
+  ## Perform the vector mean
+  ####################################################################################
+
+  for (U32 e = 0; e < AME_NELEM; e++) {
+    U32 src1_regno = e / src1_elements_per_reg;
+    U32 src1_hi_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 src1_lo_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    U32 src2_regno = e / src2_elements_per_reg;
+    U32 src2_hi_idx = ((e + 1) * src2_element_size) - (src2_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 src2_lo_idx = ((e + 1) * src2_element_size) - (src2_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    U32 dest_regno = e / dest_elements_per_reg;
+    U32 dest_hi_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 dest_lo_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    Bits<AME_MAX_DTYPE_SIZE> src1_value = M[ms1 + src1_regno][src1_hi_idx:src1_lo_idx];
+    Bits<AME_MAX_DTYPE_SIZE> src2_value = M[ms2 + src2_regno][src2_hi_idx:src2_lo_idx];
+
+    M[md + dest_regno][dest_hi_idx:dest_lo_idx] =
+      ame_op(AmeOperation::MEAN1D, src1_dtype, src1_value, src2_dtype, src2_value, dest_dtype);
+  }
