@@ -9,12 +9,9 @@ name: mabs.1d
 long_name: Elementwise absolute value
 description: |
   Elementwise absolute value of the tensor in `ms1`, stored into `md`.
-
-  *numpy equivalent*:
-  [source,python]
-  ----
-  md = np.abs(ms1)
-  ----
+custom_ame:
+  numpy_equivalent: md = np.abs(ms1)
+  group: Elementwise Arithmetic
 definedBy:
   extension:
     name: Zvame

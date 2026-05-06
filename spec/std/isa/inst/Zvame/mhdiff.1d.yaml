@@ -10,8 +10,9 @@ long_name: Elementwise half-difference
 description: |
   Elementwise half-difference of the tensors in `ms1` and `ms2`, stored into `md`.
   Computes the true half-difference; pairs with `mmean.1d`.
-
-  *numpy equivalent*: `md = (ms2 - ms1) * 0.5`
+custom_ame:
+  numpy_equivalent: md = (ms2 - ms1) * 0.5
+  group: Elementwise Arithmetic
 definedBy:
   extension:
     name: Zvame

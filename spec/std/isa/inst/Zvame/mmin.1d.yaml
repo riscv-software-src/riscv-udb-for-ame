@@ -10,8 +10,9 @@ long_name: Elementwise minimum
 description: |
   Elementwise minimum of the tensors in `ms1` and `ms2`, stored into `md`.
   Used for clipping and piecewise functions.
-
-  *numpy equivalent*: `md = np.minimum(ms1, ms2)`
+custom_ame:
+  numpy_equivalent: md = np.minimum(ms1, ms2)
+  group: Elementwise Arithmetic
 definedBy:
   extension:
     name: Zvame

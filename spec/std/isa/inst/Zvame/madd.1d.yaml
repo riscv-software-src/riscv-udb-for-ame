@@ -9,8 +9,9 @@ name: madd.1d
 long_name: Elementwise addition
 description: |
   Vector addition of the tensors in `ms1` and `ms2`, stored into `md`.
-
-  *numpy equivalent*: `ms1 = src2 + src1`
+custom_ame:
+  numpy_equivalent: ms1 = ms2 + ms1
+  group: Elementwise Arithmetic
 definedBy:
   extension:
     name: Zvame

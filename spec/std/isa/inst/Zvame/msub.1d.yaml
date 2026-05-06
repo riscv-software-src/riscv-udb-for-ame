@@ -9,8 +9,9 @@ name: msub.1d
 long_name: Elementwise subtraction
 description: |
   Vector subtraction of the tensors in `ms1` and `ms2`, stored into `md`.
-
-  *numpy equivalent*: `md = ms2 - ms1`
+custom_ame:
+  numpy_equivalent: md = ms2 - ms1
+  group: Elementwise Arithmetic
 definedBy:
   extension:
     name: Zvame

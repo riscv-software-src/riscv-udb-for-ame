@@ -6,13 +6,17 @@
 $schema: param_schema.json#
 kind: parameter
 name: AME_UNIT_DATATYPE_SIZE
-long_name: The datatype size, in bits, at which exactly one tensor fits in an M register
+long_name: The datatype size, in bits, at which exactly one square fits in an M register
 definedBy:
   extension:
     name: Zvame
 description: |
-  Above AME_UNIT_DATATYPE_SIZE, a tensor is split across multiple tensor registers.
-  Below AME_UNIT_DATATYPE_SIZE, multiple tensors will fit in a single tensor register.
+  When the datatype size of an M register is:
+
+  - Above AME_UNIT_DATATYPE_SIZE, a square is split across multiple M registers.
+  - At or below AME_UNIT_DATATYPE_SIZE, a single square will fit in a single M register.
+
+  When below AME_UNIT_DATATYPE_SIZE, some space in a M register may be unused.
 
   [IMPORTANT]
   Implementations with different AME_UNIT_DATATYPE_SIZE values are not binary compatible.

@@ -31,7 +31,9 @@ description: |
 
   If xs3 is not x0 and X[xs3][31:16] or X[xs3][15:0] is greater than sqrt(AME_NELEM),
   `ls.rm.pred` raises an `Illegal Instruction` exception.
-
+custom_ame:
+  numpy_equivalent:
+  group: Memory
 definedBy:
   extension:
     name: Zvame

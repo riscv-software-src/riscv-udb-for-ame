@@ -10,8 +10,9 @@ long_name: Elementwise absolute difference
 description: |
   Elementwise absolute difference of the tensors in `ms1` and `ms2`, stored into `md`.
   Used for L1 distance and error metrics.
-
-  *numpy equivalent*: `md = np.abs(ms1 - ms2)`
+custom_ame:
+  numpy_equivalent: md = np.abs(ms1 - ms2)
+  group: Elementwise Arithmetic
 definedBy:
   extension:
     name: Zvame

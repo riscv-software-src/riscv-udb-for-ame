@@ -10,8 +10,9 @@ long_name: Elementwise maximum
 description: |
   Elementwise maximum of the tensors in `ms1` and `ms2`, stored into `md`.
   Used for ReLU, pooling, and clipping.
-
-  *numpy equivalent*: `md = np.maximum(ms1, ms2)`
+custom_ame:
+  numpy_equivalent: md = np.maximum(ms1, ms2)
+  group: Elementwise Arithmetic
 definedBy:
   extension:
     name: Zvame

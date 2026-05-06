@@ -6,17 +6,17 @@
 $schema: param_schema.json#
 kind: parameter
 name: AME_NELEM
-long_name: Number of elements in AME tensor
+long_name: Number of elements in an AME square
 definedBy:
   extension:
     name: Zvame
 description: |
-  The number of elements in any AME tensor, which is fixed regardless of datatype.
+  The number of elements in any AME square, which is fixed regardless of datatype.
 
   [NOTE]
-  This is not the number of elements stored in a tensor register, but is rather
+  This is _not_ the number of elements stored in an AME M register, but is rather
   (a) the number of elements in an abstract tensor, and
-  (b) the number of elements in any tensor register holding a datatype whose size is equal
+  (b) the number of elements in any M register holding a datatype whose size is equal
   to AME_UNIT_DATATYPE_SIZE.
 
   AME_NELEM must be a power of 4.
