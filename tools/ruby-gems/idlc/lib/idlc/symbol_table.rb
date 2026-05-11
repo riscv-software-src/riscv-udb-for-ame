@@ -17,9 +17,9 @@ module Idl
   class Var
     extend T::Sig
 
-    attr_reader :name, :type, :value
+    attr_reader :name, :type, :value, :max_value
 
-    def initialize(name, type, value = nil, decode_var: false, function_name: nil, param: false, for_loop_iter: false)
+    def initialize(name, type, value = nil, decode_var: false, function_name: nil, param: false, for_loop_iter: false, max_value: nil)
       @name = name
       raise ArgumentError, "Expecting a Type, got #{type.class.name}" unless type.is_a?(Type)
 
@@ -32,6 +32,7 @@ module Idl
       @function_name = function_name
       @param = param
       @for_loop_iter = for_loop_iter
+      @max_value = max_value
 
       @const_compatible = true # until otherwise known
     end
@@ -56,7 +57,7 @@ module Idl
     end
 
     def hash
-      [@name, @type, @value, @decode_var, @function_name, @param].hash
+      [@name, @type, @value, @decode_var, @function_name, @param, @max_value].hash
     end
 
     def to_s
@@ -70,7 +71,8 @@ module Idl
         value&.clone,
         decode_var: @decode_var,
         function_name: @function_name,
-        param: @param
+        param: @param,
+        max_value: @max_value
       )
     end
 

@@ -96,4 +96,4 @@ operation(): |
       ame_op(AmeOperation::EXP21D, src1_dtype, src1_element_value, src1_dtype, src1_element_value, dest_dtype);
   }
 
-  M[md + dest_regno][dest_hi_idx:dest_lo_idx] = ame_xform_rm_to_impl(result);
+  M[md + dest_regno] = ame_xform_rm_to_impl(result);

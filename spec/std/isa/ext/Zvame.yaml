@@ -20,3 +20,14 @@ type: unprivileged
 versions:
   - version: "0.1"
     state: development
+    contributors:
+      - name: Derek Hower
+        email: dhower@qti.qualcomm.com
+        company: Qualcomm Technologies, Inc.
+      - name: Luca Maroncelli
+        email: lmaronce@qti.qualcomm.com
+        company: Qualcomm Technologies, Inc.
+      - name: Eric Mahurin
+        email: emahurin@qti.qualcomm.com
+        company: Qualcomm Technologies, Inc.
+      - name: <Add your name in riscv-unified-db/spec/std/isa/ext/Zvame.yaml>

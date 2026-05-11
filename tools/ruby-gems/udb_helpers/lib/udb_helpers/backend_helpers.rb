@@ -133,19 +133,16 @@ module Udb
         "%%UDB_DOC_LINK%ext;#{ext_name.sanitize};#{ext_name}%%"
       end
 
-      # @return [String] A hyperlink to UDB parameter documentation
-      # @param ext_name [String] Name of the extension
-      # @param param_name [String] Name of the parameter
-      # @param link_text [String] What to put in the link text (don't assume param_name)
-      def link_to_udb_doc_ext_param(ext_name, param_name, link_text)
-        check_no_periods(param_name)
-        "%%UDB_DOC_LINK%ext_param;#{ext_name.sanitize}.#{param_name};#{link_text}%%"
-      end
-
       # @return [String] A hyperlink to UDB instruction documentation
       # @param inst_name [String] Name of the instruction
       def link_to_udb_doc_inst(inst_name, link_text = inst_name)
         "%%UDB_DOC_LINK%inst;#{inst_name.sanitize};#{link_text}%%"
+      end
+
+      # @return [String] A hyperlink to UDB instruction documentation
+      # @param inst_name [String] Name of the instruction
+      def link_to_udb_doc_param(param_name, link_text = param_name)
+        "%%UDB_DOC_LINK%param;#{param_name.sanitize};#{link_text}%%"
       end
 
       # @return [String] A hyperlink to UDB CSR documentation
@@ -206,18 +203,16 @@ module Udb
         "[#udb:doc:ext:#{ext_name.sanitize}]"
       end
 
-      # @return [String] An anchor for UDB parameter documentation
-      # @param ext_name [String] Name of the extension
-      # @param param_name [String] Name of the parameter
-      def anchor_for_udb_doc_ext_param(ext_name, param_name)
-        check_no_periods(param_name)
-        "[#udb:doc:ext_param:#{ext_name.sanitize}:#{param_name}]"
-      end
-
       # @return [String] An anchor for UDB instruction documentation
       # @param name [String] Name of the instruction
       def anchor_for_udb_doc_inst(name)
         "[#udb:doc:inst:#{name.sanitize}]"
+      end
+
+      # @return [String] An anchor for UDB instruction documentation
+      # @param name [String] Name of the instruction
+      def anchor_for_udb_doc_param(name)
+        "[#udb:doc:param:#{name.sanitize}]"
       end
 
       # @return [String] An anchor for UDB CSR documentation
@@ -320,6 +315,8 @@ module Udb
             "<<udb:doc:ext_param:#{ext_name}:#{param_name},#{link_text}>>"
           when "inst"
             "<<udb:doc:inst:#{name},#{link_text}>>"
+          when "param"
+            "<<udb:doc:param:#{name},#{link_text}>>"
           when "csr"
             "<<udb:doc:csr:#{name},#{link_text}>>"
           when "csr_field"

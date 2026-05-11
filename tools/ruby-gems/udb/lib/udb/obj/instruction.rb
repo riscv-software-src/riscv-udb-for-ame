@@ -1024,6 +1024,26 @@ module Udb
       end
     end
 
+    # Represents a single pseudoinstruction (assembly alias) entry defined in the YAML
+    # pseudoinstructions field. Each entry maps a shorter mnemonic to this instruction
+    # when a given operand condition holds.
+    class Pseudoinstruction
+      extend T::Sig
+
+      # @return [String] The alias mnemonic (value of the "to" field)
+      sig { returns(String) }
+      attr_reader :mnemonic
+
+      # @return [Idl::AstNode] Parsed AST of the operand condition (value of the "when" field)
+      attr_reader :condition
+
+      sig { params(mnemonic: String, condition: T.untyped).void }
+      def initialize(mnemonic, condition)
+        @mnemonic = mnemonic
+        @condition = condition
+      end
+    end
+
     def load_encoding
       @encodings = {}
       if has_type?
@@ -1210,6 +1230,26 @@ module Udb
     def hints
       @hints ||= @data.key?("hints") ? @data["hints"].map { |ref| @cfg_arch.ref(ref["$ref"]) } : []
     end
+
+    # @return [Array<Pseudoinstruction>] Assembly aliases defined for this instruction
+    def pseudoinstructions
+      @pseudoinstructions ||=
+        (@data["pseudoinstructions"] || []).map do |pi|
+          xlen = base.nil? ? 64 : base
+          symtab = fill_symtab(xlen, nil)
+          condition_ast = cfg_arch.idl_compiler.compile_inst_expression(
+            pi["when"],
+            symtab,
+            input_file: @data["$source"],
+            input_line: source_line(["pseudoinstructions"])
+          )
+          symtab.release
+          Pseudoinstruction.new(pi["to"], condition_ast)
+        end
+    end
+
+    # @return [Boolean] true if this instruction has any pseudoinstructions
+    def pseudoinstructions? = !pseudoinstructions.empty?
 
     # @param cfg_arch [ConfiguredArchitecture] The architecture definition
     # @return [Boolean] whether or not the instruction is implemented given the supplied config options

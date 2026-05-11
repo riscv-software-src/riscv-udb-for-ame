@@ -429,5 +429,25 @@ module Idl
 
       ast
     end
+
+    # Parse a single boolean expression in an instruction operand context (e.g., a
+    # pseudoinstruction "when" condition like "xs3 == 0"). Unlike compile_expression,
+    # this does not error on unknown values because operand values are runtime-only.
+    def compile_inst_expression(expression, symtab, input_file: "[EXPRESSION]", input_line: 0)
+      @parser.set_input_file(input_file, input_line, 0, nil)
+      m = @parser.parse(expression, root: :expression)
+      if m.nil?
+        raise SyntaxError, <<~MSG
+          While parsing #{input_file}:#{input_line + @parser.failure_line}:#{@parser.failure_column}
+
+          #{@parser.failure_reason}
+        MSG
+      end
+
+      ast = m.to_ast
+      ast.set_input_file(input_file, input_line, 0, nil)
+      ast.freeze_tree(symtab)
+      ast
+    end
   end
 end

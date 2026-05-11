@@ -202,7 +202,7 @@ module Idl
 
     sig { params(value_result: T.untyped, _block: T.proc.returns(T.untyped)).returns(T.untyped).checked(:never) }
     def self.value_else(value_result, &_block)
-      return unless value_result == :unknown_value
+      return unless value_result.is_a?(UnknownLiteral) || value_result == :unknown_value
 
       yield
     end
@@ -231,7 +231,7 @@ module Idl
     def initialize(input, interval, children)
       @input = input
       @input_file = nil
-      @starting_line = 0
+      @starting_line = nil
       @starting_offset = 0
       @line_file_offsets = T.let(nil, T.nilable(T::Array[Integer]))
       @interval = interval
@@ -1147,6 +1147,8 @@ module Idl
           if param.schema.max_val_known?
             max = param.schema.max_val
           end
+        elsif !var.nil? && !var.max_value.nil?
+          max = var.max_value
         end
       end
       max
@@ -1254,7 +1256,7 @@ module Idl
     def add_symbol(symtab)
       raise "Symtab should be at global scope" unless symtab.levels == 1
 
-      # globals never have a compile-time value
+      # mutable globals never have a compile-time value; const globals may
       var_decl_with_init.add_symbol(symtab)
     end
 
@@ -3959,7 +3961,8 @@ module Idl
             symtab.add(lhs.text_value, Var.new(lhs.text_value, lhs_type(symtab), rhs.value(symtab), for_loop_iter: @for_iter_var))
           end
           value_else(value_result) do
-            symtab.add(lhs.text_value, Var.new(lhs.text_value, lhs_type(symtab), for_loop_iter: @for_iter_var))
+            mv = rhs.max_value(symtab)
+            symtab.add(lhs.text_value, Var.new(lhs.text_value, lhs_type(symtab), for_loop_iter: @for_iter_var, max_value: mv == :unknown ? nil : mv))
           end
         else
           # mutable globals never have a compile-time value
@@ -4939,7 +4942,11 @@ module Idl
 
             trunc_prod = truncate(prod, type(symtab).width, type(symtab).signed?)
             truncation_warn "result is truncated from #{prod} to #{trunc_prod}. Did you mean to use the widening multiplication operator (`*)?"
-            return trunc_prod
+            # When truncation produces a value smaller than the mathematical product, the
+            # truncated result can be any value in [0, 2^width-1] — return the type max
+            # so callers get a valid upper bound rather than the potentially-zero truncated value.
+            type_max = type(symtab).signed? ? (1 << (type(symtab).width - 1)) - 1 : (1 << type(symtab).width) - 1
+            return [trunc_prod, type_max].max
           else
             # prod width isn't known...we might still be able to know that it fits if the sum would fit
             # in lhs or rhs

@@ -1,0 +1,58 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: ss
+long_name: Store square to implementation-defined format
+description: |
+  Stores a square from matrix register `ms1` into memory in the implementation-defined
+  register format.
+
+  The data written to memory is in the same implementation-defined format used by the
+  matching load instruction (`ls`). No datatype conversion is performed. All elements
+  are stored unconditionally.
+
+  The address must be aligned to the implementation-defined square size or 4KB,
+  whichever is smaller. Otherwise, `ss` raises a `Store/AMO Misaligned` exception.
+custom_ame:
+  numpy_equivalent:
+  group: Memory
+definedBy:
+  extension:
+    name: Zvame
+assembly: ms1, xs1
+encoding:
+  match: 000001100000-----001-----0110011
+  variables:
+    - name: ms1
+      location: 11-7
+    - name: xs1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  XReg address = X[xs1];
+
+  if (AME_NMREGS == 16) {
+    if (ms1 >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  XReg impl_size_bytes = AME_MAX_SQUARE_SIZE >> 3;
+
+  XReg alignment = min(impl_size_bytes, 4096);
+
+  if (address % alignment != 0) {
+    # unaligned store
+    raise(ExceptionCode::StoreAMOAddressMisaligned, mode(), $encoding);
+  }
+
+  write_memory_ame(address, $encoding, M[ms1], impl_size_bytes);

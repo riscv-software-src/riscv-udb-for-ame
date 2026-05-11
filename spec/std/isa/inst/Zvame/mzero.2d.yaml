@@ -46,4 +46,4 @@ operation(): |
     result[dest_hi:dest_lo] = 0;
   }
 
-  Acc[acc][dest_hi:dest_lo] = ame_xform_rm_to_impl(result);
+  Acc[acc] = ame_xform_rm_to_impl(result);

@@ -98,7 +98,7 @@ module Udb
       if schema_hash.key?("const")
         large2hex(schema_hash["const"])
       elsif schema_hash.key?("enum")
-        "[#{schema_hash["enum"].join(', ')}]"
+        "one of: [#{schema_hash["enum"].join(', ')}]"
       elsif schema_hash.key?("$ref")
         if schema_hash["$ref"].split("/").last == "uint32"
           "32-bit integer"
@@ -248,7 +248,8 @@ module Udb
       to_idl_type.kind == :bits && \
         (@schema_hash.key?("const") || \
          @schema_hash.key?("maximum") || \
-         @schema_hash.key?("enum"))
+         @schema_hash.key?("enum") || \
+         @schema_hash.key?("$ref"))
     end
 
     # @return [Boolean] if the minimum value of the schema is known, i.e., is a restricted integer
@@ -257,7 +258,8 @@ module Udb
       to_idl_type.kind == :bits && \
         (@schema_hash.key?("const") || \
          @schema_hash.key?("minimum") || \
-         @schema_hash.key?("enum"))
+         @schema_hash.key?("enum") || \
+         @schema_hash.key?("$ref"))
     end
 
     # @return [Integer] The maximum value the schema allows. Only valid if #max_val_known? is true
@@ -269,6 +271,19 @@ module Udb
         @schema_hash["enum"].max
       elsif @schema_hash.key?("maximum")
         @schema_hash["maximum"]
+      elsif @schema_hash.key?("$ref")
+        case @schema_hash["$ref"]
+        when "schema_defs.json#/$defs/uint32"
+          4294967295
+        when "schema_defs.json#/$defs/uint64"
+          18446744073709551615
+        when "schema_defs.json#/$defs/power_of_4"
+          4194304
+        when "schema_defs.json#/$defs/64bit_unsigned_pow2"
+          9223372036854775808
+        else
+          raise "unexpected $ref: #{@schema_hash["$ref"]}"
+        end
       else
         raise "unexpected"
       end
@@ -283,6 +298,19 @@ module Udb
         @schema_hash["enum"].min
       elsif @schema_hash.key?("minimum")
         @schema_hash["minimum"]
+      elsif @schema_hash.key?("$ref")
+        case @schema_hash["$ref"]
+        when "schema_defs.json#/$defs/uint32"
+          0
+        when "schema_defs.json#/$defs/uint64"
+          0
+        when "schema_defs.json#/$defs/power_of_4"
+          4
+        when "schema_defs.json#/$defs/64bit_unsigned_pow2"
+          1
+        else
+          raise "unexpected $ref: #{@schema_hash["$ref"]}"
+        end
       else
         raise "unexpected"
       end

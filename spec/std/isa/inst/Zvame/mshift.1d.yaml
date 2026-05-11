@@ -91,22 +91,22 @@ operation(): |
   ####################################################################################
 
   U32 N = sqrt(AME_NELEM);
-  S32 shift = $signed(imm);
+  Bits<32> shift = $signed(imm);
 
   for (U32 i = 0; i < N; i++) {
     for (U32 j = 0; j < N; j++) {
       U32 e_out = i * N + j;
-      S32 src_j = (S32)j + shift;
+      Bits<32> src_j = j + shift;
 
       U32 dst_regno = e_out / dest_elements_per_reg;
       U32 dst_hi = ((e_out + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
       U32 dst_lo = ((e_out + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
 
-      if (src_j >= 0 && (U32)src_j < N) {
-        U32 e_src = i * N + (U32)src_j;
-        U32 src_regno = e_src / src1_elements_per_reg;
-        U32 src_hi = ((e_src + 1) * src1_element_size) - (src_regno * AME_MATRIX_REGISTER_SIZE);
-        U32 src_lo = ((e_src + 1) * src1_element_size) - (src_regno * AME_MATRIX_REGISTER_SIZE);
+      if ($signed(src_j) >= 0 && $signed(src_j) < N) {
+        Bits<32> e_src = i * N + src_j;
+        Bits<32> src_regno = $signed(e_src) / src1_elements_per_reg;
+        U32 src_hi = ((e_src + 1) * src1_element_size) - ($signed(src_regno) * AME_MATRIX_REGISTER_SIZE);
+        U32 src_lo = ((e_src + 1) * src1_element_size) - ($signed(src_regno) * AME_MATRIX_REGISTER_SIZE);
 
         Bits<AME_MAX_DTYPE_SIZE> src_value = ame_xform_impl_to_rm(M[ms1 + src_regno])[src_hi:src_lo];
 

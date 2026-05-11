@@ -71,6 +71,17 @@ builtin function ame_xform_rm_to_impl {
   }
 }
 
+builtin function ame_convert_datatype {
+  returns Bits<AME_MAX_DTYPE_SIZE>
+  arguments
+    Bits<AME_MAX_DTYPE_SIZE> val,
+    Bits<8> from_dtype,
+    Bits<8> to_dtype
+  description {
+    Convert scalar `val` from `from_dtype` to `to_dtype`.
+  }
+}
+
 function ame_dtype_val_to_size {
   returns Bits<AME_MAX_DTYPE_SIZE>
   arguments Bits<AME_DTYPE_WIDTH> dtype_val
@@ -250,5 +261,102 @@ function read_memory_ame {
     } else {
       unreachable("Unsupported dtype size");
     }
+  }
+}
+
+function write_memory_ame {
+  arguments
+    XReg virtual_address,
+    Bits<INSTR_ENC_SIZE> encoding,
+    Bits<AME_MAX_SQUARE_SIZE> data,
+    Bits<AME_MAX_DTYPE_SIZE> dtype_size_bytes
+  description {
+    Write dtype_size_bytes of data to memory.
+  }
+  body {
+    if (dtype_size_bytes == 4) {
+      write_memory(4, virtual_address, encoding, data[31:0]);
+    } else if (dtype_size_bytes == 8) {
+      write_memory(8, virtual_address, encoding, data[63:0]);
+    } else if (dtype_size_bytes == 16) {
+      write_memory(16, virtual_address, encoding, data[127:0]);
+    } else if (dtype_size_bytes == 32) {
+      write_memory(32, virtual_address, encoding, data[255:0]);
+    } else if (dtype_size_bytes == 64) {
+      write_memory(64, virtual_address, encoding, data[511:0]);
+    } else {
+      unreachable("Unsupported dtype size");
+    }
+  }
+}
+
+builtin function ame_xform_cm_to_impl {
+  returns Bits<AME_MAX_SQUARE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> cm_square,
+    Bits<8> dtype
+  description {
+    Given a square in column-major format, return the implementation-dependent
+    representation of the square.
+  }
+}
+
+builtin function ame_xform_impl_to_cm {
+  returns Bits<AME_MAX_SQUARE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> impl_square,
+    Bits<8> dtype
+  description {
+    Given a square in implementation-defined format, return the column-major
+    representation of the square.
+  }
+}
+
+builtin function ame_impl_element_is_negative {
+  returns Boolean
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> impl_square,
+    U32 row,
+    U32 col
+  description {
+    Returns true if the element at (row, col) of the implementation-defined square
+    has its sign bit set (i.e., is negative), false otherwise.
+  }
+}
+
+builtin function ame_impl_get_element {
+  returns Bits<AME_MAX_DTYPE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> impl_square,
+    U32 row,
+    U32 col
+  description {
+    Returns the element at (row, col) from the implementation-defined square.
+    Bits above the element's datatype width are zero.
+  }
+}
+
+builtin function ame_impl_set_element {
+  returns Bits<AME_MAX_SQUARE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> impl_square,
+    U32 row,
+    U32 col,
+    Bits<AME_MAX_DTYPE_SIZE> value
+  description {
+    Returns a copy of impl_square with the element at (row, col) replaced by value.
+  }
+}
+
+builtin function ame_impl_predicated_value {
+  returns Bits<AME_MAX_DTYPE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> impl_square,
+    U32 row,
+    U32 col
+  description {
+    Returns the implementation-defined value for element (row, col) when a predicate
+    is false. Implementations may return the element's current value, zero, or any
+    other implementation-specific value.
   }
 }

@@ -5,6 +5,7 @@ ruby "~> 3.2"
 source "https://rubygems.org"
 
 gem "tty-spinner"
+gem "asciidoctor-lists"
 
 # local gems in UDB
 gemspec path: "tools/ruby-gems/idlc"

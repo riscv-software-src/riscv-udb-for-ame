@@ -5,47 +5,47 @@
 
 $schema: "inst_schema.json#"
 kind: instruction
-name: ls.rm.pred
-long_name: Load square from row-major format, predicated
+name: ss.rm.pred
+long_name: Store square to row-major format, predicated
 description: |
-  Loads a strided square from memory in row-major format into matrix register `md`.
+  Stores a strided square from matrix register `ms1` into memory in row-major format.
 
-  The datatype of the square in memory is determined from `Md[md].SD`.
-  The datatype of the square in the destination register is determined from `Md[md].RD`.
+  The datatype of the square in memory is determined from `Md[ms1].SD`.
+  The datatype of the square in the source register is determined from `Md[ms1].RD`.
   The two do not have to be the same, though the supported mix is implementation-dependent.
-  When the two datatypes are dissimilar, conversion occurs during the load operation (no explicit
+  When the two datatypes are dissimilar, conversion occurs during the store operation (no explicit
   conversion instructions needed).
 
-  Rows are loaded at a stride given in xs2.
+  Rows are stored at a stride given in xs2.
   The stride is calculated from the start of a row to the start of the next row.
-  If the value in xs2 is less than the square row size (sizeof(Md[md].SD) * sqrt(AME_NELEM)),
-  `ls.rm.pred` raises a synchronous `Illegal Instruction` exception.
+  If the value in xs2 is less than the square row size (sizeof(Md[ms1].SD) * sqrt(AME_NELEM)),
+  `ss.rm.pred` raises a synchronous `Illegal Instruction` exception.
 
-  The address must be aligned to the square row size (sizeof(Md[md].SD) * sqrt(AME_NELEM)) or 4KB,
+  The address must be aligned to the square row size (sizeof(Md[ms1].SD) * sqrt(AME_NELEM)) or 4KB,
   whichever is smaller.
-  Otherwise, ls.rm.pred raises a `Load Misaligned` exception.
+  Otherwise, ss.rm.pred raises a `Store/AMO Misaligned` exception.
 
-  The number of rows to load is stored in bits 31:16 of xs3
-  and the number of columns to load is stored in bits 15:0 of xs3.
-  When xs3 is x0, then all rows and columns are loaded.
-  Elements from unloaded rows or columns are written as zero into the register.
+  The number of rows to store is stored in bits 31:16 of xs3
+  and the number of columns to store is stored in bits 15:0 of xs3.
+  When xs3 is x0, then all rows and columns are stored.
+  Elements from unspecified rows or columns are not written to memory.
 
   If xs3 is not x0 and X[xs3][31:16] or X[xs3][15:0] is zero,
-  `ls.rm.pred` raises an `Illegal Instruction` exception.
+  `ss.rm.pred` raises an `Illegal Instruction` exception.
 
   If xs3 is not x0 and X[xs3][31:16] or X[xs3][15:0] is greater than sqrt(AME_NELEM),
-  `ls.rm.pred` raises an `Illegal Instruction` exception.
+  `ss.rm.pred` raises an `Illegal Instruction` exception.
 custom_ame:
   numpy_equivalent:
   group: Memory
 definedBy:
   extension:
     name: Zvame
-assembly: md, xs1, xs2, xs3
+assembly: ms1, xs1, xs2, xs3
 encoding:
-  match: -----00----------000-----0110011
+  match: -----00----------001-----0110011
   variables:
-    - name: md
+    - name: ms1
       location: 11-7
     - name: xs3
       location: 31-27
@@ -61,14 +61,14 @@ access:
 data_independent_timing: false
 pseudoinstructions:
   - when: xs3 == 0
-    to: ls.rm md, xs1, xs2
+    to: ss.rm ms1, xs1, xs2
 operation(): |
   XReg address = X[xs1];
-  Bits<8> storage_dtype = Md[md][15:8];
-  Bits<8> reg_dtype = Md[md][7:0];
+  Bits<8> storage_dtype = Md[ms1][15:8];
+  Bits<8> reg_dtype = Md[ms1][7:0];
 
   if (AME_NMREGS == 16) {
-    if (md >= 16) {
+    if (ms1 >= 16) {
       raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
     }
   }
@@ -85,8 +85,8 @@ operation(): |
   XReg stride = X[xs2];
 
   if (address % alignment != 0) {
-    # unaligned load
-    raise(ExceptionCode::LoadAddressMisaligned, mode(), $encoding);
+    # unaligned store
+    raise(ExceptionCode::StoreAMOAddressMisaligned, mode(), $encoding);
   }
 
   if (num_rows == 0 || num_rows > sqrt(AME_NELEM) || num_cols == 0 || num_cols > sqrt(AME_NELEM)) {
@@ -104,22 +104,17 @@ operation(): |
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
-  Bits<AME_MAX_SQUARE_SIZE> tmp;
+  Bits<AME_MAX_SQUARE_SIZE> tmp = ame_xform_impl_to_rm(M[ms1], reg_dtype);
 
   for (U32 i=0; i < sqrt(AME_NELEM); i++) {
     for (U32 j=0; j < sqrt(AME_NELEM); j++) {
       Bits<64> begin = i*sqrt(AME_NELEM) + j*storage_row_size_bytes;
       Bits<64> end = i*sqrt(AME_NELEM) + ((j+1)*storage_row_size_bytes - 1);
 
-      if (i > num_rows || j > num_cols) {
-        tmp[begin:end] = 0;
-      } else {
+      if (i <= num_rows && j <= num_cols) {
         Bits<AME_MAX_DTYPE_SIZE> storage_data =
-          read_memory_ame(address + i*stride + j*storage_row_size_bytes, $encoding, storage_row_size_bytes);
-        tmp[begin:end] =
-          ame_convert_datatype(storage_data, storage_dtype, reg_dtype);
+          ame_convert_datatype(tmp[begin:end], reg_dtype, storage_dtype);
+        write_memory_ame(address + i*stride + j*storage_row_size_bytes, $encoding, storage_data, storage_row_size_bytes);
       }
     }
   }
-
-  M[md] = ame_xform_rm_to_impl(tmp, reg_dtype);
