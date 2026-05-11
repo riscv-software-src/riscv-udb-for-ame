@@ -5,19 +5,27 @@
 
 $schema: "inst_schema.json#"
 kind: instruction
-name: mabs.1d
-long_name: Elementwise absolute value
+name: mreduceadd.1d
+long_name: Elementwise row reduce (add)
 description: |
-  Elementwise absolute value of the tensor in `ms1`, stored into `md`.
+  Reduces each row of `ms1` by addition and broadcasts the result to all columns of the
+  corresponding row in `md`.
+
+  For each row `i` and column `j`:
+
+    `md[i,j] = sum over k of ms1[i,k]`
+
+  All columns in each output row receive the same value (the row sum).
+  For the max-reduction form, see `mreducemax.1d`.
 custom_ame:
-  numpy_equivalent: md = np.abs(ms1)
-  group: Elementwise Arithmetic
+  numpy_equivalent: "md[i] = np.sum(ms1[i])"
+  group: Communication and Permute
 definedBy:
   extension:
     name: Zvame
 assembly: md, ms1
 encoding:
-  match: 00001010000------000-----0110011
+  match: 00110100000------000-----0110011
   variables:
     - name: md
       location: 11-7
@@ -32,10 +40,9 @@ data_independent_timing: false
 operation(): |
   Bits<8> dest_dtype = Md[md][7:0];
   Bits<8> src1_dtype = Md[ms1][7:0];
-  Bits<8> src2_dtype = Md[ms2][7:0];
 
   ####################################################################################
-  ## Calculate element/register sizes for each register index
+  ## Calculate element/register sizes
   ####################################################################################
 
   U32 src1_element_size = ame_dtype_val_to_size(src1_dtype);
@@ -56,7 +63,7 @@ operation(): |
   ## Check for exceptions
   ####################################################################################
 
-  if (!ame_op_supported(AmeOperation::ABS1D, dest_dtype, src1_dtype, src2_dtype)) {
+  if (!ame_op_supported(AmeOperation::REDUCEADD1D, dest_dtype, src1_dtype, src1_dtype)) {
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
@@ -74,25 +81,30 @@ operation(): |
   }
 
   ####################################################################################
-  ## Perform the vector absolute value
+  ## Perform the row add-reduction and broadcast to all columns
   ####################################################################################
 
-  Bits<AME_MATRIX_REGISTER_SIZE> src1_value = ame_xform_impl_to_rm(M[ms1 + src1_regno]);
-  Bits<AME_MATRIX_REGISTER_SIZE> result;
+  U32 N = sqrt(AME_NELEM);
 
-  for (U32 e = 0; e < AME_NELEM; e++) {
-    U32 src1_regno = e / src1_elements_per_reg;
-    U32 src1_hi_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
-    U32 src1_lo_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
+  for (U32 i = 0; i < N; i++) {
+    # Compute the row sum across all columns k
+    Bits<AME_MAX_DTYPE_SIZE> row_result = 0;
+    for (U32 k = 0; k < N; k++) {
+      U32 e_src = i * N + k;
+      U32 src_regno = e_src / src1_elements_per_reg;
+      U32 src_hi = ((e_src + 1) * src1_element_size) - (src_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 src_lo = ((e_src + 1) * src1_element_size) - (src_regno * AME_MATRIX_REGISTER_SIZE);
+      row_result =
+        ame_op(AmeOperation::REDUCEADD1D, src1_dtype, ame_xform_impl_to_rm(M[ms1 + src_regno])[src_hi:src_lo],
+               dest_dtype, row_result, dest_dtype);
+    }
 
-    U32 dest_regno = e / dest_elements_per_reg;
-    U32 dest_hi_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
-    U32 dest_lo_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
-
-    Bits<AME_MAX_DTYPE_SIZE> src1_element_value = src1_value[src1_hi_idx:src1_lo_idx];
-
-    result =
-      ame_op(AmeOperation::ABS1D, src1_dtype, src1_element_value, src1_dtype, src1_element_value, dest_dtype);
+    # Broadcast the result to all output columns
+    for (U32 j = 0; j < N; j++) {
+      U32 e_dst = i * N + j;
+      U32 dst_regno = e_dst / dest_elements_per_reg;
+      U32 dst_hi = ((e_dst + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 dst_lo = ((e_dst + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
+      M[md + dst_regno][dst_hi:dst_lo] = ame_xform_rm_to_impl(row_result);
+    }
   }
-
-  M[md + dest_regno][dest_hi_idx:dest_lo_idx] = ame_xform_rm_to_impl(result);

@@ -8,16 +8,20 @@ kind: instruction
 name: ls.rm.pred
 long_name: Load square from row-major format, predicated
 description: |
-  Loads a strided square from memory in row-major format.
+  Loads a strided square from memory in row-major format into matrix register `md`.
 
-  The datatype of the square is determined from the destination register `dtype`.
+  The datatype of the square in memory is determined from `Md[md].SD`.
+  The datatype of the square in the destination register is determined from `Md[md].RD`.
+  The two do not have to be the same, though the supported mix is implementation-dependent.
+  When the two datatypes are dissimilar, conversion occurs during the load operation (no explicit
+  conversion instructions needed).
 
   Rows are loaded at a stride given in xs2.
   The stride is calculated from the start of a row to the start of the next row.
-  If the value in xs2 is less than the square row size (dtype_sz * sqrt(AME_NELEM),
+  If the value in xs2 is less than the square row size (sizeof(Md[md].SD) * sqrt(AME_NELEM)),
   `ls.rm.pred` raises a synchronous `Illegal Instruction` exception.
 
-  The address must be aligned to the square row size (dtype_sz * sqrt(AME_NELEM)) or 4KB,
+  The address must be aligned to the square row size (sizeof(Md[md].SD) * sqrt(AME_NELEM)) or 4KB,
   whichever is smaller.
   Otherwise, ls.rm.pred raises a `Load Misaligned` exception.
 
@@ -39,10 +43,10 @@ definedBy:
     name: Zvame
 assembly: md, xs1, xs2, xs3
 encoding:
-  match: -----00----------0000----0110011
+  match: -----00----------000-----0110011
   variables:
     - name: md
-      location: 10-7
+      location: 11-7
     - name: xs3
       location: 31-27
     - name: xs1
@@ -60,12 +64,20 @@ pseudoinstructions:
     to: ls.rm md, xs1, xs2
 operation(): |
   XReg address = X[xs1];
+  Bits<8> storage_dtype = Md[md][15:8];
+  Bits<8> reg_dtype = Md[md][7:0];
 
-  XReg dtype_size_bytes = ame_dtype_size(md) >> 3;
+  if (AME_NMREGS == 16) {
+    if (md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
 
-  XReg row_size_bytes = dtype_size_bytes * sqrt(AME_NELEM);
+  U32 storage_element_size_bytes = ame_dtype_val_to_size(storage_dtype) >> 3;
 
-  XReg alignment = min(row_size_bytes, 4096);
+  XReg storage_row_size_bytes = storage_element_size_bytes * sqrt(AME_NELEM);
+
+  XReg alignment = min(storage_row_size_bytes, 4096);
 
   XReg num_rows = xs3 == 0 ? sqrt(AME_NELEM) : X[xs3][31:16];
   XReg num_cols = xs3 == 0 ? sqrt(AME_NELEM) : X[xs3][15:0];
@@ -96,16 +108,18 @@ operation(): |
 
   for (U32 i=0; i < sqrt(AME_NELEM); i++) {
     for (U32 j=0; j < sqrt(AME_NELEM); j++) {
-      Bits<64> begin = i*sqrt(AME_NELEM) + j*dtype_size_bytes;
-      Bits<64> end = i*sqrt(AME_NELEM) + ((j+1)*dtype_size_bytes - 1);
+      Bits<64> begin = i*sqrt(AME_NELEM) + j*storage_row_size_bytes;
+      Bits<64> end = i*sqrt(AME_NELEM) + ((j+1)*storage_row_size_bytes - 1);
 
       if (i > num_rows || j > num_cols) {
         tmp[begin:end] = 0;
       } else {
+        Bits<<AME_MAX_DTYPE_SIZE> storage_data =
+          read_memory_ame(address + i*stride + j*storage_row_size_bytes, $encoding, storage_row_size_bytes);
         tmp[begin:end] =
-          read_memory_ame(address + i*stride + j*dtype_size_bytes, $encoding, dtype_size_bytes);
+          ame_convert_square_datatype(tmp, storage_dtype, row_dtype);
       }
     }
   }
 
-  m[md] = ame_xform_square_from_rm(tmp);
+  m[md] = ame_xform_rm_to_impl(tmp, row_dtype);

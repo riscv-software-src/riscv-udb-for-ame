@@ -5,20 +5,25 @@
 
 $schema: "inst_schema.json#"
 kind: instruction
-name: mhdiff.1d
-long_name: Elementwise half-difference
+name: mlog2sub.1d
+long_name: Elementwise log2 minus bias
 description: |
-  Elementwise half-difference of the tensors in `ms1` and `ms2`, stored into `md`.
-  Computes the true half-difference; pairs with `mmean.1d`.
+  Elementwise biased base-2 logarithm: subtracts `ms2` from the base-2 logarithm
+  of the absolute value of `ms1`, stored into `md`.
+
+  For each element, `md[i] = log2(|ms1[i]|) - ms2[i]`.
+
+  Useful for biased-exponent arithmetic, where `ms2` holds the bias value.
+  Complementary to `msublog2.1d`.
 custom_ame:
-  numpy_equivalent: md = (ms2 - ms1) * 0.5
-  group: Elementwise Arithmetic
+  numpy_equivalent: md = np.log2(np.abs(ms1)) - ms2
+  group: Log2 and Exp2
 definedBy:
   extension:
     name: Zvame
 assembly: md, ms1, ms2
 encoding:
-  match: 0000011----------000-----0110011
+  match: 0010011----------000-----0110011
   variables:
     - name: md
       location: 11-7
@@ -66,7 +71,7 @@ operation(): |
   ## Check for exceptions
   ####################################################################################
 
-  if (!ame_op_supported(AmeOperation::HDIFF1D, dest_dtype, src1_dtype, src2_dtype)) {
+  if (!ame_op_supported(AmeOperation::LOG2SUB1D, dest_dtype, src1_dtype, src2_dtype)) {
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
@@ -87,7 +92,7 @@ operation(): |
   }
 
   ####################################################################################
-  ## Perform the vector half-difference
+  ## Perform the elementwise log2 minus bias
   ####################################################################################
 
   Bits<AME_MATRIX_REGISTER_SIZE> src1_value = ame_xform_impl_to_rm(M[ms1 + src1_regno]);
@@ -111,7 +116,7 @@ operation(): |
     Bits<AME_MAX_DTYPE_SIZE> src2_element_value = src2_value[src2_hi_idx:src2_lo_idx];
 
     result =
-      ame_op(AmeOperation::HDIFF1D, src1_dtype, src1_element_value, src2_dtype, src2_element_value, dest_dtype);
+      ame_op(AmeOperation::LOG2SUB1D, src1_dtype, src1_element_value, src2_dtype, src2_element_value, dest_dtype);
   }
 
   M[md + dest_regno][dest_hi_idx:dest_lo_idx] = ame_xform_rm_to_impl(result);

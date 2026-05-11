@@ -1,0 +1,43 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/register_file_schema.json
+
+$schema: register_file_schema.json#
+kind: register_file
+name: Acc
+long_name: Attached Matrix Accumulator Registers
+description: |
+  `Acc` registers are the destination of all AME matrix multiply instructions.
+  They can also be source or destination of AME move instructions.
+
+  Unlike `M` registers, each `Acc` register is large enough to hold the largest
+  representable square for the implementation given its supported datatypes.
+  `Acc` registers do not need to be grouped.
+
+  The number of `Acc` registers is `AME_NACC_REGS`, which may be 1, 2, or 4.
+  Implementations with different `AME_NACC_REGS` values are not binary compatible.
+definedBy: Zvame
+register_class: matrix
+register_length(): return AME_MAX_SQUARE_SIZE;
+registers:
+  - name: acc0
+    abi_mnemonics: [acc0]
+    caller_saved: false
+    roles: [accumulator]
+    description: Matrix accumulator register.
+  - name: acc1
+    abi_mnemonics: [acc1]
+    caller_saved: false
+    roles: [accumulator]
+    description: Matrix accumulator register.
+  - name: acc2
+    abi_mnemonics: [acc2]
+    caller_saved: false
+    roles: [accumulator]
+    description: Matrix accumulator register.
+  - name: acc3
+    abi_mnemonics: [acc3]
+    caller_saved: false
+    roles: [accumulator]
+    description: Matrix accumulator register.

@@ -1,0 +1,22 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/ext_schema.json
+
+$schema: "ext_schema.json#"
+kind: extension
+name: Zvame
+long_name: Attached Matrix Extension
+description: |
+  Zvame defines the Attached Matrix Extension, introducing a matrix-oriented execution model and
+  instruction set for high-throughput linear algebra and tensor-style workloads.
+  It adds matrix state and operations that complement scalar and vector processing, including data
+  movement between memory and matrix storage and arithmetic primitives designed for efficient
+  multiply-accumulate style computation.
+  The extension is specified with precise architectural behavior, encoding, and software-visible
+  state so implementations can deliver portable performance while integrating cleanly with the
+  broader RISC-V ISA and existing toolchains.
+type: unprivileged
+versions:
+  - version: "0.1"
+    state: development

@@ -5,20 +5,28 @@
 
 $schema: "inst_schema.json#"
 kind: instruction
-name: mhdiff.1d
-long_name: Elementwise half-difference
+name: mselge.1d
+long_name: Elementwise predicated select (non-negative)
 description: |
-  Elementwise half-difference of the tensors in `ms1` and `ms2`, stored into `md`.
-  Computes the true half-difference; pairs with `mmean.1d`.
+  Elementwise predicated select using the non-negative sign of `ms1` to gate `ms2` into `md`.
+
+  For each element, `md[i] = ms2[i]` if `ms1[i] >= 0` (sign bit clear),
+  otherwise `md[i] = 0`.
+
+  `ms1` serves as the predicate register: any non-negative value is treated as true.
+  This allows comparison results or arithmetic sign values to be used directly
+  as predicates without normalization.
+
+  Complementary to `msel.1d`.
 custom_ame:
-  numpy_equivalent: md = (ms2 - ms1) * 0.5
-  group: Elementwise Arithmetic
+  numpy_equivalent: md = np.where(ms1 >= 0, ms2, 0)
+  group: Compare and Predication
 definedBy:
   extension:
     name: Zvame
 assembly: md, ms1, ms2
 encoding:
-  match: 0000011----------000-----0110011
+  match: 0001001----------000-----0110011
   variables:
     - name: md
       location: 11-7
@@ -66,7 +74,7 @@ operation(): |
   ## Check for exceptions
   ####################################################################################
 
-  if (!ame_op_supported(AmeOperation::HDIFF1D, dest_dtype, src1_dtype, src2_dtype)) {
+  if (!ame_op_supported(AmeOperation::SELGE1D, dest_dtype, src1_dtype, src2_dtype)) {
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
@@ -87,7 +95,7 @@ operation(): |
   }
 
   ####################################################################################
-  ## Perform the vector half-difference
+  ## Perform the elementwise predicated select (pass ms2 where ms1 is non-negative, else 0)
   ####################################################################################
 
   Bits<AME_MATRIX_REGISTER_SIZE> src1_value = ame_xform_impl_to_rm(M[ms1 + src1_regno]);
@@ -111,7 +119,7 @@ operation(): |
     Bits<AME_MAX_DTYPE_SIZE> src2_element_value = src2_value[src2_hi_idx:src2_lo_idx];
 
     result =
-      ame_op(AmeOperation::HDIFF1D, src1_dtype, src1_element_value, src2_dtype, src2_element_value, dest_dtype);
+      ame_op(AmeOperation::SELGE1D, src1_dtype, src1_element_value, src2_dtype, src2_element_value, dest_dtype);
   }
 
   M[md + dest_regno][dest_hi_idx:dest_lo_idx] = ame_xform_rm_to_impl(result);

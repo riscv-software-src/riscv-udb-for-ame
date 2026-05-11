@@ -1,0 +1,49 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mzero.2d
+long_name: Clear accumulator tile
+description: |
+  Writes zero to every element of `acc`.
+
+  Typically used to initialize an accumulator before a matrix multiply sequence.
+custom_ame:
+  numpy_equivalent: acc = np.zeros_like(acc)
+  group: Matrix Multiply
+definedBy:
+  extension:
+    name: Zvame
+assembly: acc
+encoding:
+  match: 0011110000000000000000--00110011
+  variables:
+    - name: acc
+      location: 9-8
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<8> dest_dtype = Ad[acc][7:0];
+
+  U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
+
+  if (!ame_op_supported(AmeOperation::ZERO1D, dest_dtype, dest_dtype, dest_dtype)) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  Bits<AME_MATRIX_REGISTER_SIZE> result = 0;
+
+  for (U32 e = 0; e < AME_NELEM; e++) {
+    U32 dest_hi = ((e + 1) * dest_element_size);
+    U32 dest_lo = ((e + 1) * dest_element_size);
+    result[dest_hi:dest_lo] = 0;
+  }
+
+  Acc[acc][dest_hi:dest_lo] = ame_xform_rm_to_impl(result);

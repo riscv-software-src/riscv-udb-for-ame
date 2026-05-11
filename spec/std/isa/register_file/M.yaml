@@ -10,6 +10,8 @@ long_name: Attached Matrix General-purpose Registers
 description: |
   `M` registers are used as the data operand of load or store instructions,
   the input operands of 1D (element-wise/vector) operations, and the output operands of 1D operations.
+
+  The number of available `M` registers is `AME_NMREGS` (16 or 32).
 definedBy: Zvame
 register_class: matrix
 register_length(): return AME_NELEM * AME_UNIT_DATATYPE_SIZE;
@@ -91,6 +93,86 @@ registers:
     description: General-purpose matrix register.
   - name: m15
     abi_mnemonics: [m15]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m16
+    abi_mnemonics: [m16]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m17
+    abi_mnemonics: [m17]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m18
+    abi_mnemonics: [m18]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m19
+    abi_mnemonics: [m19]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m20
+    abi_mnemonics: [m20]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m21
+    abi_mnemonics: [m21]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m22
+    abi_mnemonics: [m22]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m23
+    abi_mnemonics: [m23]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m24
+    abi_mnemonics: [m24]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m25
+    abi_mnemonics: [m25]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m26
+    abi_mnemonics: [m26]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m27
+    abi_mnemonics: [m27]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m28
+    abi_mnemonics: [m28]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m29
+    abi_mnemonics: [m29]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m30
+    abi_mnemonics: [m30]
+    caller_saved: true
+    roles: [temporary]
+    description: General-purpose matrix register.
+  - name: m31
+    abi_mnemonics: [m31]
     caller_saved: true
     roles: [temporary]
     description: General-purpose matrix register.

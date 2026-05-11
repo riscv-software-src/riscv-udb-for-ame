@@ -98,3 +98,83 @@ registers:
     caller_saved: true
     roles: [temporary]
     description: Datatype register
+  - name: md16
+    abi_mnemonics: [md16]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md17
+    abi_mnemonics: [md17]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md18
+    abi_mnemonics: [md18]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md19
+    abi_mnemonics: [md19]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md20
+    abi_mnemonics: [md20]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md21
+    abi_mnemonics: [md21]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md22
+    abi_mnemonics: [md22]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md23
+    abi_mnemonics: [md23]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md24
+    abi_mnemonics: [md24]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md25
+    abi_mnemonics: [md25]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md26
+    abi_mnemonics: [md26]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md27
+    abi_mnemonics: [md27]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md28
+    abi_mnemonics: [md28]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md29
+    abi_mnemonics: [md29]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md30
+    abi_mnemonics: [md30]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register
+  - name: md31
+    abi_mnemonics: [md31]
+    caller_saved: true
+    roles: [temporary]
+    description: Datatype register

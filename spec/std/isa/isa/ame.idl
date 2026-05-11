@@ -9,7 +9,8 @@ Bits<8>  AME_MAX_DTYPE_SIZE = 64;  # largest width of a datatype value
 Bits<64> AME_MAX_SQUARE_SIZE = AME_MAX_DTYPE_SIZE * AME_NELEM;
 
 Bits<8>  AME_NUM_MREGS = 16;
-Bits<64> AME_MATRIX_REGISTER_SIZE = AME_UNIT_DATATYPE_SIZE * AME_NELEM;
+U32 AME_MATRIX_REGISTER_SIZE = AME_UNIT_DATATYPE_SIZE * AME_NELEM;
+U32 AME_ACC_REGISTER_SIZE = AME_MAX_SQUARE_SIZE;
 
 enum AmeOperation {
   ADD1D      1
@@ -48,24 +49,24 @@ enum AmeDatatype {
   FP8_E5M2     20
 }
 
-builtin function ame_xform_square_from_rm {
-  returns Bits<AME_MAX_SQUARE_SIZE>
-  arguments
-    Bits<AME_MAX_SQUARE_SIZE> raster_square,
-    Bits<8> dtype
-  description {
-    Given a square in row-major format, return the implementation-dependent
-    representation of the square.
-  }
-}
-
-builtin function ame_xform_rm_to_square {
+builtin function ame_xform_impl_to_rm {
   returns Bits<AME_MAX_SQUARE_SIZE>
   arguments
     Bits<AME_MAX_SQUARE_SIZE> impl_square,
     Bits<8> dtype
   description {
     Given a square in implementation-defined format, return the row-major
+    representation of the square.
+  }
+}
+
+builtin function ame_xform_rm_to_impl {
+  returns Bits<AME_MAX_SQUARE_SIZE>
+  arguments
+    Bits<AME_MAX_SQUARE_SIZE> raster_square,
+    Bits<8> dtype
+  description {
+    Given a square in row-major format, return the implementation-dependent
     representation of the square.
   }
 }

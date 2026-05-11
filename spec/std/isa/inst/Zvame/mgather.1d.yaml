@@ -5,20 +5,27 @@
 
 $schema: "inst_schema.json#"
 kind: instruction
-name: mhdiff.1d
-long_name: Elementwise half-difference
+name: mgather.1d
+long_name: Elementwise gather (take)
 description: |
-  Elementwise half-difference of the tensors in `ms1` and `ms2`, stored into `md`.
-  Computes the true half-difference; pairs with `mmean.1d`.
+  Elementwise gather: for each element in each row, uses the corresponding index from `ms2`
+  to select a column from the same row of `ms1`, and stores the result into `md`.
+
+  For each row `i` and column `j`:
+
+    `md[i,j] = ms1[i, ms2[i,j]]`
+
+  `ms2` provides integer column indices in the range `[0, sqrt(AME_NELEM))`.
+  An out-of-range index raises an `Illegal Instruction` exception.
 custom_ame:
-  numpy_equivalent: md = (ms2 - ms1) * 0.5
-  group: Elementwise Arithmetic
+  numpy_equivalent: md[i] = ms1[i][ms2[i]]
+  group: Communication and Permute
 definedBy:
   extension:
     name: Zvame
 assembly: md, ms1, ms2
 encoding:
-  match: 0000011----------000-----0110011
+  match: 0010100----------000-----0110011
   variables:
     - name: md
       location: 11-7
@@ -66,7 +73,7 @@ operation(): |
   ## Check for exceptions
   ####################################################################################
 
-  if (!ame_op_supported(AmeOperation::HDIFF1D, dest_dtype, src1_dtype, src2_dtype)) {
+  if (!ame_op_supported(AmeOperation::GATHER1D, dest_dtype, src1_dtype, src2_dtype)) {
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
@@ -87,31 +94,36 @@ operation(): |
   }
 
   ####################################################################################
-  ## Perform the vector half-difference
+  ## Perform the elementwise gather
   ####################################################################################
 
-  Bits<AME_MATRIX_REGISTER_SIZE> src1_value = ame_xform_impl_to_rm(M[ms1 + src1_regno]);
-  Bits<AME_MATRIX_REGISTER_SIZE> src2_value = ame_xform_impl_to_rm(M[ms2 + src2_regno]);
-  Bits<AME_MATRIX_REGISTER_SIZE> result;
+  U32 N = sqrt(AME_NELEM);
 
-  for (U32 e = 0; e < AME_NELEM; e++) {
-    U32 src1_regno = e / src1_elements_per_reg;
-    U32 src1_hi_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
-    U32 src1_lo_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
+  for (U32 i = 0; i < N; i++) {
+    for (U32 j = 0; j < N; j++) {
+      U32 e = i * N + j;
 
-    U32 src2_regno = e / src2_elements_per_reg;
-    U32 src2_hi_idx = ((e + 1) * src2_element_size) - (src2_regno * (AME_MATRIX_REGISTER_SIZE));
-    U32 src2_lo_idx = ((e + 1) * src2_element_size) - (src2_regno * (AME_MATRIX_REGISTER_SIZE));
+      U32 idx_regno = e / src2_elements_per_reg;
+      U32 idx_hi = ((e + 1) * src2_element_size) - (idx_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 idx_lo = ((e + 1) * src2_element_size) - (idx_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 col_idx = ame_xform_impl_to_rm(M[ms2 + idx_regno])[idx_hi:idx_lo];
 
-    U32 dest_regno = e / dest_elements_per_reg;
-    U32 dest_hi_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
-    U32 dest_lo_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+      if (col_idx >= N) {
+        raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+      }
 
-    Bits<AME_MAX_DTYPE_SIZE> src1_element_value = src1_value[src1_hi_idx:src1_lo_idx];
-    Bits<AME_MAX_DTYPE_SIZE> src2_element_value = src2_value[src2_hi_idx:src2_lo_idx];
+      U32 e_src = i * N + col_idx;
+      U32 src_regno = e_src / src1_elements_per_reg;
+      U32 src_hi = ((e_src + 1) * src1_element_size) - (src_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 src_lo = ((e_src + 1) * src1_element_size) - (src_regno * AME_MATRIX_REGISTER_SIZE);
 
-    result =
-      ame_op(AmeOperation::HDIFF1D, src1_dtype, src1_element_value, src2_dtype, src2_element_value, dest_dtype);
+      U32 dst_regno = e / dest_elements_per_reg;
+      U32 dst_hi = ((e + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 dst_lo = ((e + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
+
+      Bits<AME_MAX_DTYPE_SIZE> src_value = ame_xform_impl_to_rm(M[ms1 + src_regno])[src_hi:src_lo];
+
+      M[md + dst_regno][dst_hi:dst_lo] =
+        ame_xform_rm_to_impl(ame_op(AmeOperation::GATHER1D, src1_dtype, src_value, src1_dtype, src_value, dest_dtype));
+    }
   }
-
-  M[md + dest_regno][dest_hi_idx:dest_lo_idx] = ame_xform_rm_to_impl(result);

@@ -5,20 +5,26 @@
 
 $schema: "inst_schema.json#"
 kind: instruction
-name: mhdiff.1d
-long_name: Elementwise half-difference
+name: mldexpacc.1d
+long_name: Elementwise left-shift scale accumulate
 description: |
-  Elementwise half-difference of the tensors in `ms1` and `ms2`, stored into `md`.
-  Computes the true half-difference; pairs with `mmean.1d`.
+  Elementwise left-shift scale of `ms1` by a power of two given by `ms2`, accumulated into `md`.
+
+  For each element, `md[i] = md[i] + ms1[i] * 2^ms2[i]`.
+
+  `md` is both a source and destination: the existing element is read, the scaled value
+  is added, and the sum is written back.
+
+  Complementary to `mrdexpacc.1d`.
 custom_ame:
-  numpy_equivalent: md = (ms2 - ms1) * 0.5
-  group: Elementwise Arithmetic
+  numpy_equivalent: md = md + np.ldexp(ms1, ms2)
+  group: Log2 and Exp2
 definedBy:
   extension:
     name: Zvame
 assembly: md, ms1, ms2
 encoding:
-  match: 0000011----------000-----0110011
+  match: 0010001----------000-----0110011
   variables:
     - name: md
       location: 11-7
@@ -66,7 +72,7 @@ operation(): |
   ## Check for exceptions
   ####################################################################################
 
-  if (!ame_op_supported(AmeOperation::HDIFF1D, dest_dtype, src1_dtype, src2_dtype)) {
+  if (!ame_op_supported(AmeOperation::LDEXPACC1D, dest_dtype, src1_dtype, src2_dtype)) {
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
@@ -87,11 +93,13 @@ operation(): |
   }
 
   ####################################################################################
-  ## Perform the vector half-difference
+  ## Perform the elementwise left-shift scale accumulate
+  ## md is a source as well as destination: each element is read, updated, then written back.
   ####################################################################################
 
   Bits<AME_MATRIX_REGISTER_SIZE> src1_value = ame_xform_impl_to_rm(M[ms1 + src1_regno]);
   Bits<AME_MATRIX_REGISTER_SIZE> src2_value = ame_xform_impl_to_rm(M[ms2 + src2_regno]);
+  Bits<AME_MATRIX_REGISTER_SIZE> dest_value = ame_xform_impl_to_rm(M[md + dest_regno]);
   Bits<AME_MATRIX_REGISTER_SIZE> result;
 
   for (U32 e = 0; e < AME_NELEM; e++) {
@@ -109,9 +117,10 @@ operation(): |
 
     Bits<AME_MAX_DTYPE_SIZE> src1_element_value = src1_value[src1_hi_idx:src1_lo_idx];
     Bits<AME_MAX_DTYPE_SIZE> src2_element_value = src2_value[src2_hi_idx:src2_lo_idx];
+    Bits<AME_MAX_DTYPE_SIZE> dest_current = dest_value[dest_hi_idx:dest_lo_idx];
 
     result =
-      ame_op(AmeOperation::HDIFF1D, src1_dtype, src1_element_value, src2_dtype, src2_element_value, dest_dtype);
+      ame_op(AmeOperation::LDEXPACC1D, src1_dtype, src1_element_value, src2_dtype, src2_element_value, dest_dtype, dest_current);
   }
 
   M[md + dest_regno][dest_hi_idx:dest_lo_idx] = ame_xform_rm_to_impl(result);

@@ -1,0 +1,42 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/register_file_schema.json
+
+$schema: register_file_schema.json#
+kind: register_file
+name: Ad
+long_name: Attached Matrix Accumulator Datatype Registers
+description: |
+  `Ad` registers hold the element datatype of the same-indexed `Acc` register.
+
+  Each `Ad` register holds an 8-bit datatype specifier in bits 7:0 that specifies
+  the element datatype for the `Acc` register with the same index.
+
+  `Ad` registers can only be read or written with the `mgettyp` and `msettyp` instructions.
+
+  The number of `Ad` registers equals `AME_NACC_REGS` (1, 2, or 4).
+definedBy: Zvame
+register_class: matrix
+register_length(): return 8;
+registers:
+  - name: ad0
+    abi_mnemonics: [ad0]
+    caller_saved: false
+    roles: [accumulator]
+    description: Accumulator datatype register.
+  - name: ad1
+    abi_mnemonics: [ad1]
+    caller_saved: false
+    roles: [accumulator]
+    description: Accumulator datatype register.
+  - name: ad2
+    abi_mnemonics: [ad2]
+    caller_saved: false
+    roles: [accumulator]
+    description: Accumulator datatype register.
+  - name: ad3
+    abi_mnemonics: [ad3]
+    caller_saved: false
+    roles: [accumulator]
+    description: Accumulator datatype register.
