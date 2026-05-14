@@ -30,4 +30,13 @@ versions:
       - name: Eric Mahurin
         email: emahurin@qti.qualcomm.com
         company: Qualcomm Technologies, Inc.
+      - name: Siqi Zhao
+        email: zhaosiqi.zsq@alibaba-inc.com
+        company: Alibaba DAMO Academy
+      - name: Qiu Jing
+        email: duojing.qj@alibaba-inc.com
+        company: Alibaba DAMO Academy
+      - name: Xiang Xiaoyan
+        email: xxy194829@alibaba-inc.com
+        company: Alibab DAMO Academy
       - name: <Add your name in riscv-unified-db/spec/std/isa/ext/Zvame.yaml>
