@@ -18,7 +18,8 @@ description: |
   The immediate is a 7-bit signed value, giving a range of −64 to +63.
 custom_ame:
   numpy_equivalent: "conceptual: md[i] = np.roll(ms1[i], -imm) with zero-fill"
-  group: Communication and Permute
+  math_op: "D[i,j] = A[i, j+imm]"
+  group: Permutation
 definedBy:
   extension:
     name: Zvame
@@ -44,8 +45,16 @@ pseudoinstructions:
   - when: imm == -1
     to: mshift.m1 md, ms1
 operation(): |
-  Bits<8> dest_dtype = Md[md][7:0];
-  Bits<8> src1_dtype = Md[ms1][7:0];
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src1_dtype = Md[ms1];
+
+  if (!ame_op_supported(AmeOperation::SHIFT1D, dest_dtype, src1_dtype, src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
 
   ####################################################################################
   ## Calculate element/register sizes for each register index
@@ -73,7 +82,7 @@ operation(): |
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
-  if (AME_NMREGS == 16) {
+  if (AME_NUM_M_REGS == 16) {
     if (ms1 >= 16 || md >= 16) {
       raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
     }
@@ -116,4 +125,5 @@ operation(): |
         M[md + dst_regno][dst_hi:dst_lo] = 0;
       }
     }
+  }
   }

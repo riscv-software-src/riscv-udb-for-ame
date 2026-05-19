@@ -1,0 +1,27 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/param_schema.json
+
+$schema: param_schema.json#
+kind: parameter
+name: AME_UNIMPL_ACC_BEHAVIOR
+long_name: Behavior of instructions that reference unimplemented accumulator registers
+definedBy:
+  allOf:
+    - extension:
+        name: Zvame
+    - param:
+        name: AME_NUM_ACC_REGS
+        lessThan: 4
+description: |
+  The behavior of instructions that specify an unimplemented accumulator register. Options are:
+
+  |===
+  | Value | Meaning
+
+  h| exception | Instruction raises a precise `Illegal Instruction` exception
+  h| undefined | The behavior is undefined
+  |===
+schema:
+  enum: [exception, undefined]

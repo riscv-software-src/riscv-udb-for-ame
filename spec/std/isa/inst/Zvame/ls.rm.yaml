@@ -1,0 +1,84 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: ls.rm
+long_name: Load square from row-major format
+description: |
+  Loads a square from memory in row-major format into matrix register `md`.
+
+  The datatype is determined from `Md[md]`. For compute datatypes
+  (size >= `AME_UNIT_DATATYPE_SIZE`), one square is loaded. For storage-only datatypes
+  (size < `AME_UNIT_DATATYPE_SIZE`), `pack_factor = AME_UNIT_DATATYPE_SIZE / sizeof(Md[md])`
+  squares are loaded and packed into a single M register.
+
+  The data in memory is stored contiguously in row-major order: within each sub-square,
+  row `i` immediately follows row `i-1` with no padding. All elements are loaded
+  unconditionally.
+
+  The address must be aligned to the total data size
+  (`pack_factor * AME_NELEM * sizeof(Md[md])`) or 4KB, whichever is smaller.
+  Otherwise, `ls.rm` raises a `Load Misaligned` exception.
+custom_ame:
+  numpy_equivalent:
+  math_op: "D[i] = mem^rm^[addr][i]"
+  group: Memory
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, xs1
+encoding:
+  # ENCODING TBD
+  match: 0000000-----00000000-----0110011
+  variables:
+    - name: md
+      location: 11-7
+    - name: xs1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  XReg address = X[xs1];
+  Bits<32> dtype = Md[md];
+
+  if (AME_NUM_M_REGS == 16) {
+    if (md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  U32 element_size_bits = ame_dtype_val_to_size(dtype);
+  U32 element_size_bytes = element_size_bits >> 3;
+  U32 pack_factor = ame_dtype_is_storage_only(dtype)
+    ? (AME_UNIT_DATATYPE_SIZE / element_size_bits)
+    : 1;
+
+  XReg total_bytes = pack_factor * AME_NELEM * element_size_bytes;
+  XReg alignment = min(total_bytes, 4096);
+
+  if (address % alignment != 0) {
+    raise(ExceptionCode::LoadAddressMisaligned, mode(), $encoding);
+  }
+
+  Bits<AME_MAX_SQUARE_SIZE> tmp = 0;
+
+  for (U32 sq = 0; sq < pack_factor; sq++) {
+    for (U32 i = 0; i < sqrt(AME_NELEM); i++) {
+      for (U32 j = 0; j < sqrt(AME_NELEM); j++) {
+        U32 element_idx = sq * AME_NELEM + i * sqrt(AME_NELEM) + j;
+        U32 bit_lo = element_idx * element_size_bits;
+        U32 bit_hi = bit_lo + element_size_bits - 1;
+        tmp[bit_hi:bit_lo] =
+          read_memory_ame(address + element_idx * element_size_bytes, $encoding, element_size_bytes);
+      }
+    }
+  }
+
+  M[md] = ame_xform_rm_to_impl(tmp, dtype);

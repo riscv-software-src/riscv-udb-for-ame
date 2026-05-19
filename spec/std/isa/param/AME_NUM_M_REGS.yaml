@@ -5,7 +5,7 @@
 
 $schema: param_schema.json#
 kind: parameter
-name: AME_NMREGS
+name: AME_NUM_M_REGS
 long_name: Number of AME M and Md registers
 definedBy:
   extension:
@@ -14,16 +14,16 @@ description: |
   The number of general-purpose matrix registers (`M`) and their corresponding
   datatype registers (`Md`) available in an implementation.
 
-  When `AME_NMREGS` is 16, registers `m0`–`m15` (and `md0`–`md15`) are valid.
-  When `AME_NMREGS` is 32, registers `m0`–`m31` (and `md0`–`md31`) are valid.
+  When `AME_NUM_M_REGS` is 16, registers `m0`–`m15` (and `md0`–`md15`) are valid.
+  When `AME_NUM_M_REGS` is 32, registers `m0`–`m31` (and `md0`–`md31`) are valid.
 
-  Instructions encode register specifiers as 5-bit fields.  When `AME_NMREGS` is 16,
+  Instructions encode register specifiers as 5-bit fields.  When `AME_NUM_M_REGS` is 16,
   any instruction that specifies a register whose 5-bit index has the MSB set
   (i.e., the register index is in the range 16–31) raises an `Illegal Instruction`
   exception.
 
   [IMPORTANT]
-  Implementations with different `AME_NMREGS` values are not binary compatible
+  Implementations with different `AME_NUM_M_REGS` values are not binary compatible
   for code that references registers `m16`–`m31`.
 schema:
   type: integer

@@ -13,7 +13,8 @@ description: |
   Typically used to initialize an accumulator before a matrix multiply sequence.
 custom_ame:
   numpy_equivalent: acc = np.zeros_like(acc)
-  group: Matrix Multiply
+  math_op: C = 0
+  group: State Management
 definedBy:
   extension:
     name: Zvame
@@ -30,7 +31,14 @@ access:
   vu: always
 data_independent_timing: false
 operation(): |
-  Bits<8> dest_dtype = Ad[acc][7:0];
+  Bits<32> dest_dtype = Ad[acc];
+
+  if (!ame_op_supported(AmeOperation::ZERO1D, dest_dtype, dest_dtype, dest_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
 
   U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
 
@@ -47,3 +55,4 @@ operation(): |
   }
 
   Acc[acc] = ame_xform_rm_to_impl(result);
+  }

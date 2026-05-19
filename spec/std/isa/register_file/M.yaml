@@ -11,7 +11,7 @@ description: |
   `M` registers are used as the data operand of load or store instructions,
   the input operands of 1D (element-wise/vector) operations, and the output operands of 1D operations.
 
-  The number of available `M` registers is `AME_NMREGS` (16 or 32).
+  The number of available `M` registers is `AME_NUM_M_REGS` (16 or 32).
 definedBy: Zvame
 register_class: matrix
 register_length(): return AME_NELEM * AME_UNIT_DATATYPE_SIZE;

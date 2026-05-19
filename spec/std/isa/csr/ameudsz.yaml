@@ -1,0 +1,44 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/csr_schema.json
+
+$schema: "csr_schema.json#"
+kind: csr
+name: ameudsz
+long_name: AME unit datatype size in bits
+address: 0xC02 # todo
+writable: false
+description: |
+  Holds `AME_UNIT_DATATYPE_SIZE`, the element size in bits at which exactly one
+  square fits in a single M register.
+
+  The value is a design-time constant.  Software reads this CSR together with
+  a datatype encoding to compute the *group size*: the number of consecutive M
+  registers required to hold one square:
+
+    group_size = dtype_size_bits / AME_UNIT_DATATYPE_SIZE
+
+  where `dtype_size_bits` is bits [7:0] of the 32-bit datatype encoding.
+  Compute datatypes always have `dtype_size_bits >= AME_UNIT_DATATYPE_SIZE`, so
+  `group_size >= 1`.  When `group_size > 1`, the register index used with any
+  instruction must be a multiple of `group_size`.
+
+  This CSR is analogous to `vlenb` in RISC-V Vector code: software reads it
+  once at function entry to derive all register-grouping and stride calculations
+  without hardcoding any implementation-specific constant.
+priv_mode: U
+length: MXLEN
+definedBy:
+  extension:
+    name: Zvame
+fields:
+  VALUE:
+    location_rv32: 31-0
+    location_rv64: 63-0
+    long_name: Unit datatype size (AME_UNIT_DATATYPE_SIZE) in bits
+    description: |
+      `AME_UNIT_DATATYPE_SIZE` in bits.
+      This field is read-only and fixed at design time.
+    type: RO
+    reset_value(): return AME_UNIT_DATATYPE_SIZE;

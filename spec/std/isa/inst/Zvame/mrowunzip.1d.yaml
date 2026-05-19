@@ -22,7 +22,8 @@ description: |
   `md` must be even-aligned.  Inverse of `mrowzip.1d`.
 custom_ame:
   numpy_equivalent: "conceptual: de-interleave rows into two output registers"
-  group: Communication and Permute
+  math_op: "D^0^[i,:] = A[2i,:]; D^1^[i,:] = A[2i+1,:]"
+  group: Permutation
 definedBy:
   extension:
     name: Zvame
@@ -41,8 +42,16 @@ access:
   vu: always
 data_independent_timing: false
 operation(): |
-  Bits<8> dest_dtype = Md[md][7:0];
-  Bits<8> src1_dtype = Md[ms1][7:0];
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src1_dtype = Md[ms1];
+
+  if (!ame_op_supported(AmeOperation::ROWUNZIP1D, dest_dtype, src1_dtype, src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
 
   ####################################################################################
   ## Calculate element/register sizes
@@ -70,7 +79,7 @@ operation(): |
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
-  if (AME_NMREGS == 16) {
+  if (AME_NUM_M_REGS == 16) {
     if (ms1 >= 16 || md >= 16) {
       raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
     }
@@ -135,4 +144,5 @@ operation(): |
         ame_xform_rm_to_impl(ame_op(AmeOperation::ROWUNZIP1D, src1_dtype, ame_xform_impl_to_rm(M[ms1 + src_reg_odd + src_odd_regno])[src_odd_hi:src_odd_lo],
                src1_dtype, ame_xform_impl_to_rm(M[ms1 + src_reg_odd + src_odd_regno])[src_odd_hi:src_odd_lo], dest_dtype));
     }
+  }
   }

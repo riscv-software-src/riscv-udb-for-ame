@@ -1,0 +1,40 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mgettyp
+long_name: Get datatype
+description: |
+  Get the datatype of an `M` register by read from `Md`.
+custom_ame:
+  numpy_equivalent:
+  math_op:
+  group: Datatype Management
+definedBy:
+  extension:
+    name: Zvame
+assembly: xd, ms1
+encoding:
+  match: 00110000000------001-----0110011
+  variables:
+    - name: xd
+      location: 11-7
+    - name: ms1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  if (AME_NUM_M_REGS == 16) {
+    if (ms1 >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  X[xd] = Md[ms1];

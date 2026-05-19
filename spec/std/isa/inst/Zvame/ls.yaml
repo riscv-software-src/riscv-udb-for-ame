@@ -12,14 +12,19 @@ description: |
   register `md`.
 
   The data in memory must have been previously stored in the implementation-defined
-  register format (e.g., by a matching store instruction). No datatype conversion is
+  register format (e.g., by a matching `ss` instruction). No datatype conversion is
   performed; the in-memory layout is the exact register representation. All elements
-  are loaded unconditionally.
+  are loaded unconditionally. This instruction is correct for both compute and
+  storage-only dtypes without any special handling.
+
+  For portable interoperability with other implementations, use
+  `<%= link_to_udb_doc_inst("ls.rm") %>` or `<%= link_to_udb_doc_inst("ls.cm") %>`.
 
   The address must be aligned to the implementation-defined square size or 4KB,
   whichever is smaller. Otherwise, `ls` raises a `Load Misaligned` exception.
 custom_ame:
   numpy_equivalent:
+  math_op: "D[i] = mem[addr][i]"
   group: Memory
 definedBy:
   extension:
@@ -41,7 +46,7 @@ data_independent_timing: false
 operation(): |
   XReg address = X[xs1];
 
-  if (AME_NMREGS == 16) {
+  if (AME_NUM_M_REGS == 16) {
     if (md >= 16) {
       raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
     }

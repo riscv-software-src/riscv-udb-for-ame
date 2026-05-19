@@ -21,6 +21,7 @@ enum AmeOperation {
   ABS1D      6
   MAX1D      7
   MIN1D      8
+  CONV1D     9
 }
 
 enum AmeDatatype {
@@ -89,35 +90,22 @@ function ame_dtype_val_to_size {
     Given an integral datatype value, return the size of the datatype in bits
   }
   body {
-    if (dtype_val == AmeDatatype::INT4) {
-      return 4;
-    } else if (dtype_val == AmeDatatype::INT4PACK2) {
-      return 8;
-    } else if (dtype_val == AmeDatatype::INT8) {
-      return 8;
-    } else if (dtype_val == AmeDatatype::INT8PACK2) {
-      return 16;
-    } else if (dtype_val == AmeDatatype::INT16) {
-      return 16;
-    } else if (dtype_val == AmeDatatype::INT32) {
-      return 32;
-    } else if (dtype_val == AmeDatatype::INT64) {
-      return 64;
-    } else if (dtype_val == AmeDatatype::UINT4) {
-      return 4;
-    } else if (dtype_val == AmeDatatype::UINT4PACK2) {
-      return 8;
-    } else if (dtype_val == AmeDatatype::UINT8) {
-      return 8;
-    } else if (dtype_val == AmeDatatype::UINT8PACK2) {
-      return 16;
-    } else if (dtype_val == AmeDatatype::UINT16) {
-      return 16;
-    } else if (dtype_val == AmeDatatype::UINT32) {
-      return 32;
-    } else {
-      unreachable("Unknown dtype value");
-    }
+    return dtype_val[7:0];
+  }
+}
+
+function ame_dtype_is_storage_only {
+  returns Boolean
+  arguments Bits<32> dtype_val
+  description {
+    Returns true if dtype_val is a storage-only datatype: its size in bits (bits 7:0) is
+    greater than zero and less than AME_UNIT_DATATYPE_SIZE.
+    Storage-only datatypes are packed in M registers (pack_factor = AME_UNIT_DATATYPE_SIZE / size
+    squares per register) and cannot be used as operands in compute instructions.
+  }
+  body {
+    U32 size = dtype_val[7:0];
+    return size > 0 && size < AME_UNIT_DATATYPE_SIZE;
   }
 }
 
@@ -209,32 +197,23 @@ function ame_op {
 
 function ame_dtype_size {
   returns Bits<AME_MAX_DTYPE_SIZE>
-  arguments Bits<4> m_idx
+  arguments Bits<5> m_idx
   description {
     Returns the size, in bits, of the operation datatype in `M` register m_idx
   }
   body {
-    return ame_dtype_val_to_size(Md[m_idx][7:0]);
+    return ame_dtype_val_to_size(Md[m_idx]);
   }
 }
 
-function ame_datatype_supported {
+builtin function ame_datatype_supported {
   returns Boolean
-  arguments Bits<8> dtype
+  arguments Bits<32> dtype
   description {
     Returns true if dtype is a supported datatype, false otherwise.
 
     Returns false if dtype is 0 (no datatype).
     Returns false if dtype is not a known datatype ID.
-  }
-  body {
-    if (dtype == 0) {
-      return false;
-    } else if (dtype == AmeDatatype::INT4) {
-      return $array_includes?(AME_SUPPORTED_DATATYPES, $bits(AmeDatatype::INT4));
-    } else if (dtype == AmeDatatype::INT4) {
-      return $array_includes?(AME_SUPPORTED_DATATYPES, $bits(AmeDatatype::INT4PACK2));
-    }
   }
 }
 

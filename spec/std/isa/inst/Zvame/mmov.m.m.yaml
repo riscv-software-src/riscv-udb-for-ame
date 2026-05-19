@@ -1,0 +1,76 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mmov.m.m
+long_name: Elementwise unconditional move between M registers
+description: |
+  Copies all elements from `ms` to `md`.
+
+  The element datatype of `ms` and `md` must match; if they differ,
+  `amestatus.UN` is set and `md` is left unchanged.
+
+  `ms` and `md` must satisfy the same alignment constraints as any other
+  instruction using that datatype.
+custom_ame:
+  numpy_equivalent: md = ms.copy()
+  math_op: "D[i] = A[i]"
+  group: State Management
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, ms
+encoding:
+  # ENCODING TBD
+  match: 0000101-----00000000-----0110011
+  variables:
+    - name: md
+      location: 11-7
+    - name: ms
+      location: 24-20
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src_dtype = Md[ms];
+
+  if (dest_dtype[7:0] != src_dtype[7:0]) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+  if (AME_NUM_M_REGS == 16) {
+    if (ms >= 16 || md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  U32 element_size_bits = ame_dtype_val_to_size(dest_dtype);
+
+  if (element_size_bits == 0) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+  U32 nregs = element_size_bits / AME_UNIT_DATATYPE_SIZE;
+  if (nregs == 0) {
+    nregs = 1;
+  }
+
+  if ((ms % nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((md % nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  for (U32 i = 0; i < nregs; i++) {
+    M[md + i] = M[ms + i];
+  }
+  }
+  }

@@ -19,7 +19,8 @@ description: |
   For the max-reduction form, see `mreducemax.1d`.
 custom_ame:
   numpy_equivalent: "md[i] = np.sum(ms1[i])"
-  group: Communication and Permute
+  math_op: "D[i,:] = Σ~k~ A[i,k]"
+  group: Reduction
 definedBy:
   extension:
     name: Zvame
@@ -38,8 +39,16 @@ access:
   vu: always
 data_independent_timing: false
 operation(): |
-  Bits<8> dest_dtype = Md[md][7:0];
-  Bits<8> src1_dtype = Md[ms1][7:0];
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src1_dtype = Md[ms1];
+
+  if (!ame_op_supported(AmeOperation::REDUCEADD1D, dest_dtype, src1_dtype, src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
 
   ####################################################################################
   ## Calculate element/register sizes
@@ -67,7 +76,7 @@ operation(): |
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
-  if (AME_NMREGS == 16) {
+  if (AME_NUM_M_REGS == 16) {
     if (ms1 >= 16 || md >= 16) {
       raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
     }
@@ -107,4 +116,5 @@ operation(): |
       U32 dst_lo = ((e_dst + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
       M[md + dst_regno][dst_hi:dst_lo] = ame_xform_rm_to_impl(row_result);
     }
+  }
   }

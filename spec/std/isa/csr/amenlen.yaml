@@ -1,0 +1,37 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/csr_schema.json
+
+$schema: "csr_schema.json#"
+kind: csr
+name: amenlen
+long_name: AME tile side length
+address: 0xC01 # todo
+writable: false
+description: |
+  Holds the value N = sqrt(AME_NELEM), the side length of an AME tile in elements.
+
+  The value is a design-time constant equal to the square root of
+  `AME_NELEM`.
+  Because `AME_NELEM` is always a power of 4, N is always a power of 2.
+
+  Software reads this CSR once at function entry to obtain N, then uses
+  N to derive all tile loop bounds and memory strides without hardcoding any
+  implementation-specific constants.
+  This is analogous to reading `vlenb` in RISC-V Vector code.
+priv_mode: U
+length: MXLEN
+definedBy:
+  extension:
+    name: Zvame
+fields:
+  VALUE:
+    location_rv32: 31-0
+    location_rv64: 63-0
+    long_name: Tile side length (N)
+    description: |
+      The tile side length N = sqrt(AME_NELEM).
+      This field is read-only and fixed at design time.
+    type: RO
+    reset_value(): return sqrt(AME_NELEM);

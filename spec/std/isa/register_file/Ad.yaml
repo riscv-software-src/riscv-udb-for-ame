@@ -13,9 +13,9 @@ description: |
   Each `Ad` register holds an 8-bit datatype specifier in bits 7:0 that specifies
   the element datatype for the `Acc` register with the same index.
 
-  `Ad` registers can only be read or written with the `mgettyp` and `msettyp` instructions.
+  `Ad` registers can only be read or written with the `agettyp` and `asettyp` instructions.
 
-  The number of `Ad` registers equals `AME_NACC_REGS` (1, 2, or 4).
+  The number of `Ad` registers equals `AME_NUM_ACC_REGS` (1, 2, or 4).
 definedBy: Zvame
 register_class: matrix
 register_length(): return 8;

@@ -1,0 +1,41 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: asettyp
+long_name: Set accumulator datatype
+description: |
+  Sets the datatype of an `Acc` register and zeros the data by writing to `Ad` and zeroing `Acc`.
+custom_ame:
+  numpy_equivalent: acc = np.zeros_like(acc)
+  math_op: D[i] = 0
+  group: Datatype Management
+definedBy:
+  extension:
+    name: Zvame
+assembly: ad, xs1
+encoding:
+  match: 00110110000------00000--00110011
+  variables:
+    - name: ad
+      location: 9-8
+    - name: xs1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dtype = X[xs1][31:0];
+
+  if (!ame_datatype_supported(dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+    Ad[ad] = X[xs1];
+    Acc[ad] = 0;
+  }

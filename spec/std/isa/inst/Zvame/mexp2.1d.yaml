@@ -13,6 +13,7 @@ description: |
   For each element, `md[i] = 2^ms1[i]`.
 custom_ame:
   numpy_equivalent: md = np.exp2(ms1)
+  math_op: "D[i] = 2^A[i]^"
   group: Log2 and Exp2
 definedBy:
   extension:
@@ -32,8 +33,16 @@ access:
   vu: always
 data_independent_timing: false
 operation(): |
-  Bits<8> dest_dtype = Md[md][7:0];
-  Bits<8> src1_dtype = Md[ms1][7:0];
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src1_dtype = Md[ms1];
+
+  if (!ame_op_supported(AmeOperation::EXP21D, dest_dtype, src1_dtype, src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
 
   ####################################################################################
   ## Calculate element/register sizes for each register index
@@ -61,7 +70,7 @@ operation(): |
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
-  if (AME_NMREGS == 16) {
+  if (AME_NUM_M_REGS == 16) {
     if (ms1 >= 16 || md >= 16) {
       raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
     }
@@ -97,3 +106,4 @@ operation(): |
   }
 
   M[md + dest_regno] = ame_xform_rm_to_impl(result);
+  }

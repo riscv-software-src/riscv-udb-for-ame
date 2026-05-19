@@ -1,0 +1,28 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../schemas/csr_schema.json
+
+$schema: "csr_schema.json#"
+kind: csr
+name: amestatus
+long_name: Status of the AME extension
+address: 0xC00 # todo
+writable: true
+description: |
+  TODO
+priv_mode: U
+length: MXLEN
+definedBy:
+  extension:
+    name: Zvame
+fields:
+  UN:
+    location: 0
+    long_name: Unsupported flag
+    description: |
+      Set when an AME instruction is executed with an unsupported datatype combination.
+
+      THe `UN` field is sticky; once set, it remains high until cleared by software.
+    type: RW-H
+    reset_value: UNDEFINED_LEGAL

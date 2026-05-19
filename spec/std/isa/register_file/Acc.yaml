@@ -15,8 +15,8 @@ description: |
   representable square for the implementation given its supported datatypes.
   `Acc` registers do not need to be grouped.
 
-  The number of `Acc` registers is `AME_NACC_REGS`, which may be 1, 2, or 4.
-  Implementations with different `AME_NACC_REGS` values are not binary compatible.
+  The number of `Acc` registers is `AME_NUM_ACC_REGS`, which may be 1, 2, or 4.
+  Implementations with different `AME_NUM_ACC_REGS` values are not binary compatible.
 definedBy: Zvame
 register_class: matrix
 register_length(): return AME_MAX_SQUARE_SIZE;
