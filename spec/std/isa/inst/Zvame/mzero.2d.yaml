@@ -20,7 +20,7 @@ definedBy:
     name: Zvame
 assembly: acc
 encoding:
-  match: 0011110000000000000000--00110011
+  match: 0001000000000000001000--00101011
   variables:
     - name: acc
       location: 9-8
@@ -46,7 +46,7 @@ operation(): |
     raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
   }
 
-  Bits<AME_MATRIX_REGISTER_SIZE> result = 0;
+  Bits<AME_MAX_SQUARE_SIZE> result = 0;
 
   for (U32 e = 0; e < AME_NELEM; e++) {
     U32 dest_hi = ((e + 1) * dest_element_size);
@@ -54,5 +54,5 @@ operation(): |
     result[dest_hi:dest_lo] = 0;
   }
 
-  Acc[acc] = ame_xform_rm_to_impl(result);
+  Acc[acc] = ame_xform_rm_to_impl(result, dest_dtype);
   }

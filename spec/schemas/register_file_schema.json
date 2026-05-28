@@ -63,7 +63,8 @@
               "frame_pointer",
               "return_value",
               "argument",
-              "temporary"
+              "temporary",
+              "accumulator"
             ]
           },
           "uniqueItems": true
@@ -117,6 +118,11 @@
           "items": {
             "$ref": "#/$defs/register_entry"
           }
+        },
+        "enum_order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Ordering used to assign a unique, deterministic ID to every architectural register. A register in a file with order N receives an ID starting after all registers in files with order < N. Must be unique across all register files that share a register ID namespace."
         },
         "$source": {
           "type": "string",

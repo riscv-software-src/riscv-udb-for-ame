@@ -25,7 +25,7 @@ definedBy:
 assembly: md, ms
 encoding:
   # ENCODING TBD
-  match: 0000101-----00000000-----0110011
+  match: 0000010-----00000100-----0101011
   variables:
     - name: md
       location: 11-7

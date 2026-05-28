@@ -143,6 +143,11 @@ module Idl
   end
   class AryElementAssignmentAst < AstNode
     def nullify_assignments(symtab)
+      root = lhs
+      root = root.var while root.is_a?(AryElementAccessAst) || root.is_a?(AryRangeAccessAst)
+      root_var = symtab.get(root.name)
+      return if root_var.nil? # not yet declared (e.g., declared later in same loop body)
+
       case lhs.type(symtab).kind
       when :array
         value_result = value_try do
@@ -168,11 +173,12 @@ module Idl
   end
   class AryRangeAssignmentAst < AstNode
     def nullify_assignments(symtab)
-      return if variable.type(symtab).global?
       root = variable
       root = root.var while root.is_a?(AryElementAccessAst) || root.is_a?(AryRangeAccessAst)
       var = symtab.get(root.name)
-      var.value = nil unless var.nil?
+      return if var.nil?          # not yet declared (e.g., declared later in same loop body)
+      return if var.type.global?  # global (hardware register), skip
+      var.value = nil
     end
   end
   class FieldAssignmentAst < AstNode

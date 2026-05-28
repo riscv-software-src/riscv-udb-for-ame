@@ -19,6 +19,7 @@ description: |
   Implementations with different `AME_NUM_ACC_REGS` values are not binary compatible.
 definedBy: Zvame
 register_class: matrix
+enum_order: 5
 register_length(): return AME_MAX_SQUARE_SIZE;
 registers:
   - name: acc0

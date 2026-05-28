@@ -3,9 +3,9 @@
 # Source this file; do not execute it directly.
 # Usage: source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.toolchain.sh"
 
-# Compute repo root from the location of this file (bin/.toolchain.sh → repo root)
+# Compute repo UDB_ROOT from the location of this file (bin/.toolchain.sh → repo UDB_ROOT)
 _TOOLCHAIN_SCRIPT_DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
-ROOT=$(dirname "${_TOOLCHAIN_SCRIPT_DIR}")
+UDB_ROOT=$(dirname "${_TOOLCHAIN_SCRIPT_DIR}")
 
 # Detect container runtime: prefer docker, fall back to podman, respect DOCKER/PODMAN env vars.
 # Searches PATH and common absolute locations so this works even when PATH is restricted.
@@ -23,7 +23,7 @@ _get_toolchain_runtime() {
 }
 
 # Compute toolchain container image tag as first 16 chars of SHA256 of .toolchain/Dockerfile
-_TOOLCHAIN_HASH=$(sha256sum "${ROOT}/.toolchain/Dockerfile" | cut -c1-16)
+_TOOLCHAIN_HASH=$(sha256sum "${UDB_ROOT}/.toolchain/Dockerfile" | cut -c1-16)
 TOOLCHAIN_IMAGE="ghcr.io/riscv/udb-toolchain:${_TOOLCHAIN_HASH}"
 
 # Set up TOOLCHAIN_RUN for container invocations.
@@ -41,7 +41,7 @@ _setup_toolchain_run() {
     echo "Toolchain image ${TOOLCHAIN_IMAGE} not found locally. Attempting to pull..." >&2
     if ! $runtime pull "${TOOLCHAIN_IMAGE}" 2>/dev/null; then
       echo "ERROR: Could not pull toolchain image ${TOOLCHAIN_IMAGE}." >&2
-      echo "  To build it locally: docker build -t ${TOOLCHAIN_IMAGE} ${ROOT}/.toolchain/" >&2
+      echo "  To build it locally: docker build -t ${TOOLCHAIN_IMAGE} ${UDB_ROOT}/.toolchain/" >&2
       echo "  Or set UDB_TOOLCHAIN_CONTAINER=0 and install the toolchain natively." >&2
       exit 1
     fi
@@ -54,10 +54,10 @@ _setup_toolchain_run() {
     user_flags="--userns=keep-id"
   else
     # For docker: copy /etc/passwd and /etc/group for user resolution (same pattern as bin/setup)
-    mkdir -p "${ROOT}/.cache"
-    getent passwd > "${ROOT}/.cache/passwd"
-    getent group > "${ROOT}/.cache/group"
-    user_flags="--user $(id -u):$(id -g) -v ${ROOT}/.cache/passwd:/etc/passwd:ro -v ${ROOT}/.cache/group:/etc/group:ro"
+    mkdir -p "${UDB_ROOT}/.cache"
+    getent passwd > "${UDB_ROOT}/.cache/passwd"
+    getent group > "${UDB_ROOT}/.cache/group"
+    user_flags="--user $(id -u):$(id -g) -v ${UDB_ROOT}/.cache/passwd:/etc/passwd:ro -v ${UDB_ROOT}/.cache/group:/etc/group:ro"
   fi
 
   local tty_flags=""
@@ -67,22 +67,24 @@ _setup_toolchain_run() {
 
   # Handle git worktrees: if .git is a file (worktree), also mount the parent git dir
   local extra_mounts=""
-  if [ -f "${ROOT}/.git" ]; then
+  if [ -f "${UDB_ROOT}/.git" ]; then
     local git_common_dir
-    git_common_dir=$(git -C "${ROOT}" rev-parse --git-common-dir | xargs dirname)
+    git_common_dir=$(git -C "${UDB_ROOT}" rev-parse --git-common-dir | xargs dirname)
     extra_mounts="-v ${git_common_dir}:${git_common_dir}${selinux_label}"
   fi
 
-  local host_pwd container_workdir
+  local host_pwd container_workdir extra_cwd_mount=""
   host_pwd=$(realpath "${PWD}" 2>/dev/null || printf '%s\n' "${PWD}")
-  container_workdir="${ROOT}"
+  container_workdir="${host_pwd}"
   case "${host_pwd}" in
-    "${ROOT}"|"${ROOT}"/*)
-      container_workdir="${host_pwd}"
+    "${UDB_ROOT}"|"${UDB_ROOT}"/*)
+      ;;
+    *)
+      extra_cwd_mount="-v ${host_pwd}:${host_pwd}${selinux_label}"
       ;;
   esac
 
-  TOOLCHAIN_RUN="$runtime run --rm $tty_flags -v ${ROOT}:${ROOT}${selinux_label} $extra_mounts -w ${container_workdir} $user_flags ${TOOLCHAIN_IMAGE}"
+  TOOLCHAIN_RUN="$runtime run --rm $tty_flags -v ${UDB_ROOT}:${UDB_ROOT}${selinux_label} $extra_mounts $extra_cwd_mount -w ${container_workdir} $user_flags ${TOOLCHAIN_IMAGE}"
 }
 
 # Prompt the user to pick a toolchain when they previously selected "neither".
@@ -113,7 +115,7 @@ _prompt_toolchain_selection() {
     esac
   done
 
-  printf "UDB_TOOLCHAIN_CONTAINER=%s\n" "$UDB_TOOLCHAIN_CONTAINER" > "${ROOT}/.toolchain-local"
+  printf "UDB_TOOLCHAIN_CONTAINER=%s\n" "$UDB_TOOLCHAIN_CONTAINER" > "${UDB_ROOT}/.toolchain-local"
   printf "  Saved to .toolchain-local. Run bin/setup to change this later.\n\n"
 }
 
@@ -145,13 +147,13 @@ _pull_or_build_toolchain_image() {
       --cache-to   type=gha,scope=toolchain,mode=max \
       --load \
       -t "${TOOLCHAIN_IMAGE}" \
-      -f "${ROOT}/.toolchain/Dockerfile" \
-      "${ROOT}/.toolchain/"
+      -f "${UDB_ROOT}/.toolchain/Dockerfile" \
+      "${UDB_ROOT}/.toolchain/"
   else
     $runtime build \
       -t "${TOOLCHAIN_IMAGE}" \
-      -f "${ROOT}/.toolchain/Dockerfile" \
-      "${ROOT}/.toolchain/"
+      -f "${UDB_ROOT}/.toolchain/Dockerfile" \
+      "${UDB_ROOT}/.toolchain/"
   fi
 }
 
@@ -166,7 +168,7 @@ _check_native_cxx() {
     exit 1
   }
   cache_key=$(printf '%s' "${version_str}" | sha256sum | cut -c1-16)
-  cache_file="${ROOT}/.cache/cxx-check-${cache_key}"
+  cache_file="${UDB_ROOT}/.cache/cxx-check-${cache_key}"
 
   if [ -f "${cache_file}" ] && [ "$(cat "${cache_file}")" = "ok" ]; then
     return 0
@@ -178,18 +180,18 @@ _check_native_cxx() {
   cat > "${check_dir}/CMakeLists.txt" <<EOF
 cmake_minimum_required(VERSION 3.12)
 project(cxx_check CXX)
-include("${ROOT}/.toolchain/check_cxx.cmake")
+include("${UDB_ROOT}/.toolchain/check_cxx.cmake")
 EOF
 
   local cmake_ok=0
-  if ${ROOT}/bin/cmake -S "${check_dir}" -B "${check_dir}/build" \
+  if ${UDB_ROOT}/bin/cmake -S "${check_dir}" -B "${check_dir}/build" \
        --log-level=ERROR -Wno-dev > /dev/null 2>&1; then
     cmake_ok=1
   fi
   rm -rf "${check_dir}"
 
   if [ "${cmake_ok}" = "1" ]; then
-    mkdir -p "${ROOT}/.cache"
+    mkdir -p "${UDB_ROOT}/.cache"
     printf 'ok' > "${cache_file}"
   else
     echo "ERROR: Native g++ does not meet the project's C++ requirements." >&2

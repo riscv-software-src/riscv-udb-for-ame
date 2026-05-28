@@ -1,0 +1,129 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mmin.ew.x
+long_name: Elementwise scalar minimum
+description: |
+  Computes the elementwise minimum of a scalar constant from integer register `xs1` and
+  every element of square `ms2`, stored into `md`.
+
+  The type of the scalar is determined by `Md[ms2]`. The lower `sizeof(Md[ms2])` bits of
+  `xs1` are used as the scalar value for every element position `i`:
+
+    `md[i] = min(xs1, ms2[i])`
+
+  If either `Md[md]` or `Md[ms2]` is uninitialized (zero), or the datatype combination
+  is not supported, `amestatus.UN` is set and no register is written.
+custom_ame:
+  numpy_equivalent: md = np.minimum(xs1, ms2)
+  math_op: "D[i] = min(c, B[i])"
+  group: Elementwise Arithmetic
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, xs1, ms2
+encoding:
+  # ENCODING TBD
+  match: 0000010----------010-----0101011
+  variables:
+    - name: md
+      location: 11-7
+    - name: xs1
+      location: 19-15
+    - name: ms2
+      location: 24-20
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src_dtype = Md[ms2];
+
+  if (!ame_op_supported(AmeOperation::MIN1D, dest_dtype, src_dtype, src_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+
+  ####################################################################################
+  ## Calculate element/register sizes for each register index
+  ####################################################################################
+
+  U32 src_element_size = ame_dtype_val_to_size(src_dtype);
+  U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (src_nregs == 0) {
+    # when the element size is less than AME_UNIT_DATATYPE_SIZE, we use a single register
+    # (and have unused bits)
+    src_nregs = 1;
+  }
+  U32 src_elements_per_reg = AME_NELEM / src_nregs;
+
+  U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
+  U32 dest_nregs = dest_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (dest_nregs == 0) {
+    # when the element size is less than AME_UNIT_DATATYPE_SIZE, we use a single register
+    # (and have unused bits)
+    dest_nregs = 1;
+  }
+  U32 dest_elements_per_reg = AME_NELEM / dest_nregs;
+
+  ####################################################################################
+  ## Check for exceptions
+  ####################################################################################
+
+  # check datatype support
+  if (!ame_op_supported(AmeOperation::MIN1D, dest_dtype, src_dtype, src_dtype)) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  # check for an unaligned register specifier
+  if (AME_NUM_M_REGS == 16) {
+    if (ms2 >= 16 || md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  if ((ms2 % src_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((md % dest_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  ####################################################################################
+  ## Perform the scalar minimum
+  ####################################################################################
+
+  Bits<AME_MAX_DTYPE_SIZE> scalar = X[xs1];
+  Bits<AME_MAX_SQUARE_SIZE> result;
+
+  U32 dest_regno = 0;
+
+  for (U32 e = 0; e < AME_NELEM; e++) {
+    U32 src_regno = e / src_elements_per_reg;
+    Bits<AME_MAX_SQUARE_SIZE> src_value = ame_xform_impl_to_rm(M[ms2 + src_regno], src_dtype);
+    U32 src_hi_idx = ((e + 1) * src_element_size) - (src_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 src_lo_idx = ((e + 1) * src_element_size) - (src_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    dest_regno = e / dest_elements_per_reg;
+    U32 dest_hi_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 dest_lo_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    Bits<AME_MAX_DTYPE_SIZE> src_element_value = src_value[src_hi_idx:src_lo_idx];
+    Bits<AME_MAX_DTYPE_SIZE> scalar_element_value = scalar[src_element_size-1:0];
+
+    result =
+      ame_op(AmeOperation::MIN1D, src_dtype, scalar_element_value, src_dtype, src_element_value, dest_dtype);
+  }
+
+  M[md + dest_regno] = ame_xform_rm_to_impl(result, dest_dtype);
+  }

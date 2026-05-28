@@ -18,7 +18,7 @@ definedBy:
     name: Zvame
 assembly: md, xs1
 encoding:
-  match: 00110000000------000-----0110011
+  match: 000000100000-----101-----0101011
   variables:
     - name: md
       location: 11-7

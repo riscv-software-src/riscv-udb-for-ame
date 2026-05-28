@@ -1,0 +1,133 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mcolunzip.ew
+long_name: Elementwise column unzip (de-interleave)
+description: |
+  De-interleaves each row of `ms1` into lower and upper halves in `md`.
+
+  Let `N = sqrt(AME_NELEM)`. For each row `i` and index `j` in `[0, N/2)`:
+
+    `md[i, j]       = ms1[i, 2j]`
+    `md[i, j + N/2] = ms1[i, 2j+1]`
+
+  Even-indexed columns of each row are collected into the lower half of the output;
+  odd-indexed columns into the upper half.  Inverse of `mcolzip.1d`.
+custom_ame:
+  numpy_equivalent: "conceptual: de-interleave each row into lower and upper halves"
+  math_op: "D[i,j] = A[i,2j]; D[i, N/2+j] = A[i,2j+1]"
+  group: Permutation
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, ms1
+encoding:
+  match: 000010000000-----001-----0101011
+  variables:
+    - name: md
+      location: 11-7
+    - name: ms1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src1_dtype = Md[ms1];
+
+  if (!ame_op_supported(AmeOperation::COLUNZIP1D, dest_dtype, src1_dtype, src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+
+  ####################################################################################
+  ## Calculate element/register sizes
+  ####################################################################################
+
+  U32 src1_element_size = ame_dtype_val_to_size(src1_dtype);
+  U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (src1_nregs == 0) {
+    src1_nregs = 1;
+  }
+  U32 src1_elements_per_reg = AME_NELEM / src1_nregs;
+
+  U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
+  U32 dest_nregs = dest_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (dest_nregs == 0) {
+    dest_nregs = 1;
+  }
+  U32 dest_elements_per_reg = AME_NELEM / dest_nregs;
+
+  ####################################################################################
+  ## Check for exceptions
+  ####################################################################################
+
+  if (!ame_op_supported(AmeOperation::COLUNZIP1D, dest_dtype, src1_dtype, src1_dtype)) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  if (AME_NUM_M_REGS == 16) {
+    if (ms1 >= 16 || md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  if ((ms1 % src1_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((md % dest_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  ####################################################################################
+  ## Perform the column unzip: collect even columns into lower half, odd into upper half
+  ####################################################################################
+
+  U32 N = sqrt(AME_NELEM);
+
+  for (U32 i = 0; i < N; i++) {
+    for (U32 j = 0; j < N / 2; j++) {
+      # ms1[i,2j] -> md[i,j]
+      U32 e_src_even = i * N + 2 * j;
+      U32 e_dst_lo   = i * N + j;
+
+      U32 src_even_regno = e_src_even / src1_elements_per_reg;
+      U32 src_even_hi = ((e_src_even + 1) * src1_element_size) - (src_even_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 src_even_lo = ((e_src_even + 1) * src1_element_size) - (src_even_regno * AME_MATRIX_REGISTER_SIZE);
+
+      U32 dst_lo_regno = e_dst_lo / dest_elements_per_reg;
+      U32 dst_lo_hi = ((e_dst_lo + 1) * dest_element_size) - (dst_lo_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 dst_lo_lo = ((e_dst_lo + 1) * dest_element_size) - (dst_lo_regno * AME_MATRIX_REGISTER_SIZE);
+
+      M[md + dst_lo_regno][dst_lo_hi:dst_lo_lo] =
+        ame_xform_rm_to_impl(ame_op(AmeOperation::COLUNZIP1D, src1_dtype, ame_xform_impl_to_rm(M[ms1 + src_even_regno], src1_dtype)[src_even_hi:src_even_lo],
+               src1_dtype, ame_xform_impl_to_rm(M[ms1 + src_even_regno], src1_dtype)[src_even_hi:src_even_lo], dest_dtype), dest_dtype);
+
+      # ms1[i,2j+1] -> md[i, j+N/2]
+      U32 e_src_odd = i * N + 2 * j + 1;
+      U32 e_dst_hi  = i * N + j + N / 2;
+
+      U32 src_odd_regno = e_src_odd / src1_elements_per_reg;
+      U32 src_odd_hi = ((e_src_odd + 1) * src1_element_size) - (src_odd_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 src_odd_lo = ((e_src_odd + 1) * src1_element_size) - (src_odd_regno * AME_MATRIX_REGISTER_SIZE);
+
+      U32 dst_hi_regno = e_dst_hi / dest_elements_per_reg;
+      U32 dst_hi_hi = ((e_dst_hi + 1) * dest_element_size) - (dst_hi_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 dst_hi_lo = ((e_dst_hi + 1) * dest_element_size) - (dst_hi_regno * AME_MATRIX_REGISTER_SIZE);
+
+      M[md + dst_hi_regno][dst_hi_hi:dst_hi_lo] =
+        ame_xform_rm_to_impl(ame_op(AmeOperation::COLUNZIP1D, src1_dtype, ame_xform_impl_to_rm(M[ms1 + src_odd_regno], src1_dtype)[src_odd_hi:src_odd_lo],
+               src1_dtype, ame_xform_impl_to_rm(M[ms1 + src_odd_regno], src1_dtype)[src_odd_hi:src_odd_lo], dest_dtype), dest_dtype);
+    }
+  }
+  }

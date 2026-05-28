@@ -85,5 +85,7 @@ riscv_tests:
 # Clean up
 
 clean:
-	$(MAKE) -C $(riscv_tests_dir)/isa XLEN=$(XLEN) clean
+	@if [ -f $(riscv_tests_dir)/isa/Makefile ]; then \
+		$(MAKE) -C $(riscv_tests_dir)/isa XLEN=$(XLEN) clean; \
+	fi
 	rm -rf $(junk)

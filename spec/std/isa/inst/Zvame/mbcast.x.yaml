@@ -1,0 +1,71 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mbcast.x
+long_name: Broadcast integer scalar to all elements of a square
+description: |
+  Broadcasts the scalar value from integer register `xs1` to all element positions of
+  matrix register `md`.
+
+  The element size is determined by `Md[md]`. For compute datatypes, all `AME_NELEM`
+  elements are set to the lower `sizeof(Md[md])` bits of `xs1`. For storage-only datatypes,
+  all `pack_factor * AME_NELEM` elements are set.
+
+  If `Md[md]` is uninitialized (zero), `amestatus.UN` is set and no register is written.
+custom_ame:
+  numpy_equivalent: "np.full_like(md, xs1)"
+  math_op: "D[i] = xs1"
+  group: Scalar Broadcast
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, xs1
+encoding:
+  # ENCODING TBD
+  match: 000000000000-----100-----0101011
+  variables:
+    - name: md
+      location: 11-7
+    - name: xs1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dtype = Md[md];
+
+  if (AME_NUM_M_REGS == 16) {
+    if (md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  U32 element_size_bits = ame_dtype_val_to_size(dtype);
+
+  if (element_size_bits == 0) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+  U32 pack_factor = ame_dtype_is_storage_only(dtype)
+    ? (AME_UNIT_DATATYPE_SIZE / element_size_bits)
+    : 1;
+  U32 total_elements = pack_factor * AME_NELEM;
+
+  Bits<AME_MAX_SQUARE_SIZE> result = 0;
+  Bits<AME_MAX_DTYPE_SIZE> scalar = X[xs1];
+
+  for (U32 e = 0; e < total_elements; e++) {
+    U32 bit_lo = e * element_size_bits;
+    U32 bit_hi = bit_lo + element_size_bits - 1;
+    result[bit_hi:bit_lo] = scalar[element_size_bits-1:0];
+  }
+
+  M[md] = result;
+  }

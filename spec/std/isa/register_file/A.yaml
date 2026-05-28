@@ -11,6 +11,7 @@ description: |
   `A` registers are registers for matrix multiply accumulate operations.
 definedBy: Zvame
 register_class: matrix
+enum_order: 4
 register_length(): return AME_NELEM * AME_MAX_DTYPE_SIZE;
 registers:
   - name: a0

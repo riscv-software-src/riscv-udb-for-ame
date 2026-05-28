@@ -209,6 +209,34 @@ namespace :test do
     Udb.logger.info "Encoding test PASSED"
   end
 
+  desc "Check that register file enum_orders are unique, contiguous, and start at 1"
+  task :register_file_enum_orders do
+    Udb.logger.info "Checking register file enum_orders..."
+
+    cfg_arch = $resolver.cfg_arch_for("_")
+    ordered = cfg_arch.register_files.select(&:enum_order).sort_by(&:enum_order)
+
+    failed = T.let(false, T::Boolean)
+
+    orders = ordered.map(&:enum_order)
+    if orders.uniq.size != orders.size
+      Udb.logger.error "Duplicate enum_order values: #{orders.tally.select { |_, n| n > 1 }}"
+      failed = true
+    end
+
+    unless orders == (1..orders.size).to_a
+      Udb.logger.error "enum_orders must be contiguous starting at 1; got: #{orders.inspect}"
+      failed = true
+    end
+
+    if failed
+      Udb.logger.error "register_file_enum_orders test FAILED"
+      exit 1
+    end
+
+    Udb.logger.info "register_file_enum_orders test PASSED"
+  end
+
   desc "Check that CSR definitions in the DB are consistent and do not conflict"
   task :csrs do
     print "Checking for conflicts in CSRs.."

@@ -14,6 +14,7 @@ description: |
   The number of available `M` registers is `AME_NUM_M_REGS` (16 or 32).
 definedBy: Zvame
 register_class: matrix
+enum_order: 7
 register_length(): return AME_NELEM * AME_UNIT_DATATYPE_SIZE;
 registers:
   - name: m0

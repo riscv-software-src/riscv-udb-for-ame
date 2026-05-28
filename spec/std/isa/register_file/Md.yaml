@@ -16,6 +16,7 @@ description: |
     1. In bits 15:8, the datatype of memory backing the elements -- that is, the datatype used by loads and stores.
 definedBy: Zvame
 register_class: matrix
+enum_order: 8
 register_length(): return 16;
 registers:
   - name: md0

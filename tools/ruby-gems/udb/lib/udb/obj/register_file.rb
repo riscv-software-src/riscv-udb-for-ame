@@ -167,6 +167,9 @@ class RegisterFile < TopLevelDatabaseObject
   sig { returns(T.nilable(String)) }
   def register_class = @data["register_class"]
 
+  sig { returns(T.nilable(Integer)) }
+  def enum_order = @data["enum_order"]
+
   sig { returns(T::Array[RegisterEntry]) }
   def registers
     @registers ||= @data.fetch("registers", []).map.with_index { |reg, idx| RegisterEntry.new(self, reg, idx) }

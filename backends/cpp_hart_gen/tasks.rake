@@ -296,6 +296,7 @@ namespace :gen do
     Rake::Task["#{CPP_HART_GEN_DST}/#{build_name}/CMakeLists.txt"].invoke
 
     generated_files = []
+    generated_files << "#{CPP_HART_GEN_DST}/#{build_name}/include/udb/reg.hxx"
     generated_files << "#{CPP_HART_GEN_DST}/#{build_name}/include/udb/hart_factory.hxx"
     generated_files << "#{CPP_HART_GEN_DST}/#{build_name}/include/udb/db_data.hxx"
     generated_files << "#{CPP_HART_GEN_DST}/#{build_name}/src/db_data.cxx"

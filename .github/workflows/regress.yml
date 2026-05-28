@@ -366,7 +366,7 @@ jobs:
         cfg:
         - _
         - rv32
-  regress-test-inst-encodings:
+  regress-test-db-integrity:
     runs-on: ubuntu-latest
     steps:
     - name: Clone Github Repo Action
@@ -375,6 +375,8 @@ jobs:
       uses: "./.github/actions/mise-setup"
     - name: Checking for conflicts in instruction encodings
       run: "./do test:inst_encodings"
+    - name: Checking register file enum_orders are valid
+      run: "./do test:register_file_enum_orders"
   regress-gen-isa-manual:
     runs-on: ubuntu-latest
     steps:
@@ -857,7 +859,7 @@ jobs:
     - regress-ext-explorer
     - regress-idl-typecheck-smoke
     - regress-idl-typecheck-other
-    - regress-test-inst-encodings
+    - regress-test-db-integrity
     - regress-gen-isa-manual
     - regress-gen-instruction-appendix
     - regress-cfg-manual

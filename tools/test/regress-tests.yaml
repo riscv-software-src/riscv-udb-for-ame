@@ -78,13 +78,15 @@ tests:
       - name: Type check IDL for ${{ matrix.cfg }}
         run: ./do test:idl CFG=${{ matrix.cfg }}
 
-  regress-test-inst-encodings:
+  regress-test-db-integrity:
     ci_stage: pr
     tags:
       - smoke
     test:
       - name: Checking for conflicts in instruction encodings
         run: ./do test:inst_encodings
+      - name: Checking register file enum_orders are valid
+        run: ./do test:register_file_enum_orders
 
   regress-gen-isa-manual:
     ci_stage: pr

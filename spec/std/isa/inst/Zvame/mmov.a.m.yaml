@@ -26,7 +26,7 @@ definedBy:
 assembly: md, acc
 encoding:
   # ENCODING TBD
-  match: 0000100000--00000000-----0110011
+  match: 0000011000--00000100-----0101011
   variables:
     - name: md
       location: 11-7
@@ -74,7 +74,7 @@ operation(): |
   ####################################################################################
 
   for (U32 dest_regno = 0; dest_regno < dest_nregs; dest_regno++) {
-    Bits<AME_MATRIX_REGISTER_SIZE> result = 0;
+    Bits<AME_MAX_SQUARE_SIZE> result = 0;
 
     for (U32 local_e = 0; local_e < elements_per_reg; local_e++) {
       U32 e = dest_regno * elements_per_reg + local_e;
@@ -85,10 +85,10 @@ operation(): |
       U32 reg_bit_lo = local_e * element_size_bits;
       U32 reg_bit_hi = reg_bit_lo + element_size_bits - 1;
 
-      result[reg_bit_hi:reg_bit_lo] = ame_xform_impl_to_rm(Acc[acc])[acc_bit_hi:acc_bit_lo];
+      result[reg_bit_hi:reg_bit_lo] = ame_xform_impl_to_rm(Acc[acc], src_dtype)[acc_bit_hi:acc_bit_lo];
     }
 
-    M[md + dest_regno] = ame_xform_rm_to_impl(result);
+    M[md + dest_regno] = ame_xform_rm_to_impl(result, dest_dtype);
   }
   }
   }

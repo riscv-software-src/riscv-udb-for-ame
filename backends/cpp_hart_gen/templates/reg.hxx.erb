@@ -1,0 +1,80 @@
+#pragma once
+// Generated from register file YAML definitions (enum_order field).
+// Do not edit manually — update spec/std/isa/register_file/*.yaml instead.
+
+#include <cstdint>
+#include <ostream>
+#include <string>
+
+namespace udb {
+
+class Reg {
+ public:
+  enum Enum {
+<%- rfs = cfg_arch.register_files.select(&:enum_order).sort_by(&:enum_order)
+    base = 0
+    rf_ranges = {}
+    rfs.each do |rf|
+      rf_first = base
+      rf.registers.each_with_index do |_reg, idx| -%>
+    <%= rf.name %><%= idx %> = <%= base + idx %>,
+<%- end
+    rf_ranges[rf.name] = { first: rf_first, last: base + rf.registers.length - 1 }
+    base += rf.registers.length
+  end -%>
+    INVALID = <%= base %>
+  };
+
+  Reg(Enum r) : m_reg(r) {}
+  Reg(uint64_t r, bool is_fp = false) : m_reg(Enum(is_fp ? r + static_cast<uint64_t>(F0) : r)) {}
+
+  template <typename BitsClass>
+    requires(BitsClass::IsABits)
+  Reg(const BitsClass& r, bool is_fp = false) : m_reg(Enum(is_fp ? r.get() + static_cast<uint64_t>(F0) : r.get())) {}
+
+  template <typename T>
+  static Reg from_rf_index(T idx, uint64_t base) {
+    if constexpr (requires { T::IsABits; }) {
+      return Reg(Enum(idx.get() + base));
+    } else {
+      return Reg(Enum(static_cast<uint64_t>(idx) + base));
+    }
+  }
+
+  operator Enum() const { return m_reg; }
+  bool operator==(const Reg& other) const { return m_reg == other.m_reg; }
+  bool operator==(Enum other) const { return m_reg == other; }
+  std::ostream& operator<<(std::ostream& o) const {
+    o << to_string();
+    return o;
+  }
+
+<%- rfs.group_by(&:register_class).each do |rc, files| -%>
+  bool is_<%= rc %>() const {
+    return <%- files.each_with_index do |rf, i| -%><%= i > 0 ? "\n        || " : "" %>(m_reg >= <%= rf.name %>0 && m_reg <= <%= rf.name %><%= rf.registers.length - 1 %>)<%- end -%>;
+  }
+<%- end -%>
+  bool is_int() const { return is_general_purpose(); }
+  bool is_fp() const { return is_floating_point(); }
+  bool is_vec() const { return is_vector(); }
+
+  uint64_t get_num() const {
+    uint64_t num = static_cast<uint64_t>(m_reg);
+<%- rfs.each do |rf| -%>
+    if (m_reg >= <%= rf.name %>0 && m_reg <= <%= rf.name %><%= rf.registers.length - 1 %>) return num - <%= rf_ranges[rf.name][:first] %>u;  // NOLINT
+<%- end -%>
+    return num;
+  }
+
+  std::string to_string(uint64_t size = 64) const {
+<%- rfs.each do |rf| -%>
+    if (m_reg >= <%= rf.name %>0 && m_reg <= <%= rf.name %><%= rf.registers.length - 1 %>) return "<%= rf.name.downcase %>" + std::to_string(get_num());
+<%- end -%>
+    return "invalid";
+  }
+
+ private:
+  Enum m_reg = INVALID;
+};
+
+}  // namespace udb

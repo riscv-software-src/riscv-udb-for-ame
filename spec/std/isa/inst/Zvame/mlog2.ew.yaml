@@ -1,0 +1,111 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mlog2.ew
+long_name: Elementwise base-2 logarithm
+description: |
+  Elementwise base-2 logarithm of the tensor in `ms1`, stored into `md`.
+
+  For each element, `md[i] = log2(ms1[i])`.
+custom_ame:
+  numpy_equivalent: md = np.log2(ms1)
+  math_op: "D[i] = log~2~(A[i])"
+  group: Log2 and Exp2
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, ms1
+encoding:
+  match: 000001000000-----001-----0101011
+  variables:
+    - name: md
+      location: 11-7
+    - name: ms1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src1_dtype = Md[ms1];
+
+  if (!ame_op_supported(AmeOperation::LOG21D, dest_dtype, src1_dtype, src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+
+  ####################################################################################
+  ## Calculate element/register sizes for each register index
+  ####################################################################################
+
+  U32 src1_element_size = ame_dtype_val_to_size(src1_dtype);
+  U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (src1_nregs == 0) {
+    src1_nregs = 1;
+  }
+  U32 src1_elements_per_reg = AME_NELEM / src1_nregs;
+
+  U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
+  U32 dest_nregs = dest_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (dest_nregs == 0) {
+    dest_nregs = 1;
+  }
+  U32 dest_elements_per_reg = AME_NELEM / dest_nregs;
+
+  ####################################################################################
+  ## Check for exceptions
+  ####################################################################################
+
+  if (!ame_op_supported(AmeOperation::LOG21D, dest_dtype, src1_dtype, src1_dtype)) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  if (AME_NUM_M_REGS == 16) {
+    if (ms1 >= 16 || md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  if ((ms1 % src1_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((md % dest_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  ####################################################################################
+  ## Perform the elementwise base-2 logarithm
+  ####################################################################################
+
+  Bits<AME_MAX_SQUARE_SIZE> result;
+
+  U32 dest_regno = 0;
+
+  for (U32 e = 0; e < AME_NELEM; e++) {
+    U32 src1_regno = e / src1_elements_per_reg;
+    Bits<AME_MAX_SQUARE_SIZE> src1_value = ame_xform_impl_to_rm(M[ms1 + src1_regno], src1_dtype);
+    U32 src1_hi_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 src1_lo_idx = ((e + 1) * src1_element_size) - (src1_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    dest_regno = e / dest_elements_per_reg;
+    U32 dest_hi_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 dest_lo_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    Bits<AME_MAX_DTYPE_SIZE> src1_element_value = src1_value[src1_hi_idx:src1_lo_idx];
+
+    result =
+      ame_op(AmeOperation::LOG21D, src1_dtype, src1_element_value, src1_dtype, src1_element_value, dest_dtype);
+  }
+
+  M[md + dest_regno] = ame_xform_rm_to_impl(result, dest_dtype);
+  }

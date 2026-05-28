@@ -1,0 +1,129 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mshift.ew
+long_name: Elementwise row shift by constant offset
+description: |
+  Elementwise shift of each row of `ms1` by a signed immediate offset `imm`, stored into `md`.
+
+  For each row `i` and column `j`:
+
+    `md[i,j] = ms1[i, j + imm]`  if `0 <= j + imm < sqrt(AME_NELEM)`, otherwise `md[i,j] = 0`.
+
+  Elements shifted beyond the row boundary are filled with zero (no wrap-around).
+  The immediate is a 7-bit signed value, giving a range of −64 to +63.
+custom_ame:
+  numpy_equivalent: "conceptual: md[i] = np.roll(ms1[i], -imm) with zero-fill"
+  math_op: "D[i,j] = A[i, j+imm]"
+  group: Permutation
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, ms1, imm
+encoding:
+  match: 00000------------110-----0101011
+  variables:
+    - name: md
+      location: 11-7
+    - name: ms1
+      location: 19-15
+    - name: imm
+      location: 26-20
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+pseudoinstructions:
+  - when: imm == 1
+    to: mshift.p1 md, ms1
+  - when: imm == -1
+    to: mshift.m1 md, ms1
+operation(): |
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src1_dtype = Md[ms1];
+
+  if (!ame_op_supported(AmeOperation::SHIFT1D, dest_dtype, src1_dtype, src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src1_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+
+  ####################################################################################
+  ## Calculate element/register sizes for each register index
+  ####################################################################################
+
+  U32 src1_element_size = ame_dtype_val_to_size(src1_dtype);
+  U32 src1_nregs = src1_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (src1_nregs == 0) {
+    src1_nregs = 1;
+  }
+  U32 src1_elements_per_reg = AME_NELEM / src1_nregs;
+
+  U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
+  U32 dest_nregs = dest_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (dest_nregs == 0) {
+    dest_nregs = 1;
+  }
+  U32 dest_elements_per_reg = AME_NELEM / dest_nregs;
+
+  ####################################################################################
+  ## Check for exceptions
+  ####################################################################################
+
+  if (!ame_op_supported(AmeOperation::SHIFT1D, dest_dtype, src1_dtype, src1_dtype)) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  if (AME_NUM_M_REGS == 16) {
+    if (ms1 >= 16 || md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  if ((ms1 % src1_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((md % dest_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  ####################################################################################
+  ## Perform the elementwise row shift; out-of-bounds positions are zero-filled
+  ####################################################################################
+
+  U32 N = sqrt(AME_NELEM);
+  Bits<32> shift = $signed(imm);
+
+  for (U32 i = 0; i < N; i++) {
+    for (U32 j = 0; j < N; j++) {
+      U32 e_out = i * N + j;
+      Bits<32> src_j = j + shift;
+
+      U32 dst_regno = e_out / dest_elements_per_reg;
+      U32 dst_hi = ((e_out + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
+      U32 dst_lo = ((e_out + 1) * dest_element_size) - (dst_regno * AME_MATRIX_REGISTER_SIZE);
+
+      if ($signed(src_j) >= 0 && $signed(src_j) < N) {
+        Bits<32> e_src = i * N + src_j;
+        Bits<32> src_regno = $signed(e_src) / src1_elements_per_reg;
+        U32 src_hi = ((e_src + 1) * src1_element_size) - ($signed(src_regno) * AME_MATRIX_REGISTER_SIZE);
+        U32 src_lo = ((e_src + 1) * src1_element_size) - ($signed(src_regno) * AME_MATRIX_REGISTER_SIZE);
+
+        Bits<AME_MAX_DTYPE_SIZE> src_value = ame_xform_impl_to_rm(M[ms1 + src_regno], src1_dtype)[src_hi:src_lo];
+
+        M[md + dst_regno][dst_hi:dst_lo] =
+          ame_xform_rm_to_impl(ame_op(AmeOperation::SHIFT1D, src1_dtype, src_value, src1_dtype, src_value, dest_dtype), dest_dtype);
+      } else {
+        M[md + dst_regno][dst_hi:dst_lo] = 0;
+      }
+    }
+  }
+  }

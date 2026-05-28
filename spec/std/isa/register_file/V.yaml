@@ -14,6 +14,7 @@ description: |
   participate in argument passing or return values.
 definedBy: V
 register_class: vector
+enum_order: 3
 register_length(): return VLEN;
 registers:
   - name: v0

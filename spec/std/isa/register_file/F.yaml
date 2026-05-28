@@ -13,6 +13,7 @@ description: |
   participates in the standard calling convention defined by the RISC-V ABI spec.
 definedBy: F
 register_class: floating_point
+enum_order: 2
 register_length(): |
   return implemented?(ExtensionName::Q) ? 128 : (implemented?(ExtensionName::D) ? 64 : 32);
 registers:

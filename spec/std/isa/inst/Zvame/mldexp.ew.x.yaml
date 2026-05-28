@@ -1,0 +1,140 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mldexp.ew.x
+long_name: Elementwise scalar left-shift scale (ldexp)
+description: |
+  Scales every element of square `ms2` by a power of two given by a scalar integer
+  from integer register `xs1`, stored into `md`.
+
+  For each element position `i`:
+
+    `md[i] = ms2[i] * 2^xs1`
+
+  The type of the matrix elements is determined by `Md[ms2]`. The scalar exponent is
+  interpreted as an integer of the maximum supported AME integer datatype (`AME_MAX_INT_DTYPE`).
+
+  Equivalent to C `ldexp` applied elementwise with a broadcast scalar exponent.
+  Complementary to `mrdexp.1d`.
+
+  If either `Md[md]` or `Md[ms2]` is uninitialized (zero), or the datatype combination
+  is not supported, `amestatus.UN` is set and no register is written.
+custom_ame:
+  numpy_equivalent: md = np.ldexp(ms2, xs1)
+  math_op: "D[i] = B[i] × 2^c^"
+  group: Log2 and Exp2
+definedBy:
+  extension:
+    name: Zvame
+assembly: md, xs1, ms2
+encoding:
+  # ENCODING TBD
+  match: 0010000----------010-----0101011
+  variables:
+    - name: md
+      location: 11-7
+    - name: xs1
+      location: 19-15
+    - name: ms2
+      location: 24-20
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dest_dtype = Md[md];
+  Bits<32> src_dtype = Md[ms2];
+  # The exponent type is the maximum supported integer AME datatype
+  Bits<32> exp_dtype = AME_MAX_INT_DTYPE;
+
+  if (!ame_op_supported(AmeOperation::LDEXP1D, dest_dtype, src_dtype, exp_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else if (ame_dtype_is_storage_only(dest_dtype) ||
+      ame_dtype_is_storage_only(src_dtype)) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+
+  ####################################################################################
+  ## Calculate element/register sizes for each register index
+  ####################################################################################
+
+  U32 src_element_size = ame_dtype_val_to_size(src_dtype);
+  U32 src_nregs = src_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (src_nregs == 0) {
+    # when the element size is less than AME_UNIT_DATATYPE_SIZE, we use a single register
+    # (and have unused bits)
+    src_nregs = 1;
+  }
+  U32 src_elements_per_reg = AME_NELEM / src_nregs;
+
+  U32 dest_element_size = ame_dtype_val_to_size(dest_dtype);
+  U32 dest_nregs = dest_element_size / AME_UNIT_DATATYPE_SIZE;
+  if (dest_nregs == 0) {
+    # when the element size is less than AME_UNIT_DATATYPE_SIZE, we use a single register
+    # (and have unused bits)
+    dest_nregs = 1;
+  }
+  U32 dest_elements_per_reg = AME_NELEM / dest_nregs;
+
+  U32 exp_element_size = ame_dtype_val_to_size(exp_dtype);
+
+  ####################################################################################
+  ## Check for exceptions
+  ####################################################################################
+
+  # check datatype support
+  if (!ame_op_supported(AmeOperation::LDEXP1D, dest_dtype, src_dtype, exp_dtype)) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  # check for an unaligned register specifier
+  if (AME_NUM_M_REGS == 16) {
+    if (ms2 >= 16 || md >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  if ((ms2 % src_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+  if ((md % dest_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  ####################################################################################
+  ## Perform the scalar left-shift scale
+  ## ame_op(LDEXP1D, A, B) = A * 2^B, so pass matrix as first arg (mantissa)
+  ## and scalar as second arg (exponent)
+  ####################################################################################
+
+  Bits<AME_MAX_DTYPE_SIZE> scalar = X[xs1];
+  Bits<AME_MAX_DTYPE_SIZE> scalar_exp_element = scalar[exp_element_size-1:0];
+  Bits<AME_MAX_SQUARE_SIZE> result;
+
+  U32 dest_regno = 0;
+
+  for (U32 e = 0; e < AME_NELEM; e++) {
+    U32 src_regno = e / src_elements_per_reg;
+    Bits<AME_MAX_SQUARE_SIZE> src_value = ame_xform_impl_to_rm(M[ms2 + src_regno], src_dtype);
+    U32 src_hi_idx = ((e + 1) * src_element_size) - (src_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 src_lo_idx = ((e + 1) * src_element_size) - (src_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    dest_regno = e / dest_elements_per_reg;
+    U32 dest_hi_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+    U32 dest_lo_idx = ((e + 1) * dest_element_size) - (dest_regno * (AME_MATRIX_REGISTER_SIZE));
+
+    Bits<AME_MAX_DTYPE_SIZE> src_element_value = src_value[src_hi_idx:src_lo_idx];
+
+    result =
+      ame_op(AmeOperation::LDEXP1D, src_dtype, src_element_value, exp_dtype, scalar_exp_element, dest_dtype);
+  }
+
+  M[md + dest_regno] = ame_xform_rm_to_impl(result, dest_dtype);
+  }
