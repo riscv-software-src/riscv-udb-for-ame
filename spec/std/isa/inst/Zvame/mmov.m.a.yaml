@@ -1,0 +1,95 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause-Clear
+
+# yaml-language-server: $schema=../../../../schemas/inst_schema.json
+
+$schema: "inst_schema.json#"
+kind: instruction
+name: mmov.m.a
+long_name: Elementwise unconditional move from M register to accumulator
+description: |
+  Copies all `AME_NELEM` elements from the M register group `ms1` to accumulator `acc`.
+
+  The element datatype of `ms1` (from `Md[ms1]`) and `acc` (from `Ad[acc]`) must match;
+  if they differ, `amestatus.UN` is set and `acc` is left unchanged.
+
+  The source `ms1` must satisfy the alignment constraint for its datatype: `ms1` must be a
+  multiple of the number of M registers consumed by one element.
+custom_ame:
+  numpy_equivalent: acc[:] = ms1.flatten()
+  math_op: "acc[i] = A[i]"
+  group: State Management
+definedBy:
+  extension:
+    name: Zvame
+assembly: acc, ms1
+encoding:
+  # ENCODING TBD
+  match: 0101010000-------100000000101011
+  variables:
+    - name: acc
+      location: 21-20
+    - name: ms1
+      location: 19-15
+access:
+  s: always
+  u: always
+  vs: always
+  vu: always
+data_independent_timing: false
+operation(): |
+  Bits<32> dest_dtype = Ad[acc];
+  Bits<32> src_dtype = Md[ms1];
+
+  if (dest_dtype[7:0] != src_dtype[7:0]) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+  if (AME_NUM_M_REGS == 16) {
+    if (ms1 >= 16) {
+      raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+    }
+  }
+
+  U32 element_size_bits = ame_dtype_val_to_size(src_dtype);
+
+  if (element_size_bits == 0) {
+    CSR[amestatus].UN = 1;
+  } else {
+
+  U32 src_nregs = element_size_bits / AME_UNIT_DATATYPE_SIZE;
+  if (src_nregs == 0) {
+    src_nregs = 1;
+  }
+  U32 elements_per_reg = AME_NELEM / src_nregs;
+
+  if ((ms1 % src_nregs) != 0) {
+    raise(ExceptionCode::IllegalInstruction, mode(), $encoding);
+  }
+
+  ####################################################################################
+  ## Copy AME_NELEM elements from the source M register group to acc (flat layout).
+  ## Elements in acc are indexed 0..AME_NELEM-1 at positions e*element_size_bits.
+  ####################################################################################
+
+  Bits<AME_MAX_SQUARE_SIZE> result = 0;
+
+  for (U32 src_regno = 0; src_regno < src_nregs; src_regno++) {
+    Bits<AME_MAX_SQUARE_SIZE> src_value = ame_xform_impl_to_rm(M[ms1 + src_regno], src_dtype);
+
+    for (U32 local_e = 0; local_e < elements_per_reg; local_e++) {
+      U32 e = src_regno * elements_per_reg + local_e;
+
+      U32 reg_bit_lo = local_e * element_size_bits;
+      U32 reg_bit_hi = reg_bit_lo + element_size_bits - 1;
+
+      U32 acc_bit_lo = e * element_size_bits;
+      U32 acc_bit_hi = acc_bit_lo + element_size_bits - 1;
+
+      result[acc_bit_hi:acc_bit_lo] = src_value[reg_bit_hi:reg_bit_lo];
+    }
+  }
+
+  Acc[acc] = ame_xform_rm_to_impl(result, dest_dtype);
+  }
+  }

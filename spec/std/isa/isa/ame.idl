@@ -78,6 +78,13 @@ enum AmeOperation {
   MMNEG1D    54
 
   ZERO1D     55
+
+  CMPEQ1D    56
+  CMPNE1D    57
+  REC1D      58
+  SQRT1D     59
+  RSQRT1D    60
+  TANH1D     61
 }
 
 enum AmeDatatype {
