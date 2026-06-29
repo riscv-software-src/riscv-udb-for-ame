@@ -6,6 +6,8 @@
 Bits<4>  AME_DTYPE_WIDTH = 8;      # width of a datatype ID
 Bits<8>  AME_MAX_DTYPE_SIZE = 64;  # largest width of a datatype value
 
+Bits<32> AME_MAX_INT_DTYPE = 32'h40000040;  # INT64: largest supported integer datatype
+
 Bits<64> AME_MAX_SQUARE_SIZE = AME_MAX_DTYPE_SIZE * AME_NELEM;
 
 Bits<8>  AME_NUM_MREGS = 16;
