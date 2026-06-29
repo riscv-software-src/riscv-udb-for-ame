@@ -82,6 +82,16 @@ if ! "$MISE_BIN" --version > /dev/null 2>&1; then
 fi
 _ok "mise ready ($("$MISE_BIN" --version 2>/dev/null | head -1))"
 
+# Expose `mise` by name on PATH for the rest of setup. Tools installed by mise
+# (the Ruby rubygems plugin, the npm shim) invoke bare `mise` in their
+# post-install reshim hooks; on a fresh machine where mise isn't otherwise on
+# PATH those hooks fail with "mise: command not found", aborting the install.
+# Expose only `mise` (via a dedicated dir) rather than all of bin/, so the other
+# wrappers don't shadow the tools mise is in the middle of installing.
+_MISE_PATH_DIR="$(mktemp -d)"
+ln -sf "$MISE_BIN" "$_MISE_PATH_DIR/mise"
+export PATH="$_MISE_PATH_DIR:$PATH"
+
 # ---------------------------------------------------------------------------
 # 2. Install tool versions via mise
 # ---------------------------------------------------------------------------
